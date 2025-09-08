@@ -2,11 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'screens/weather_screen.dart';
-import 'screens/farm_screen.dart';
-import 'screens/notifications_screen.dart';
 import 'providers/weather_provider.dart';
-import 'providers/farm_provider.dart';
-import 'providers/notification_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -27,8 +23,6 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => WeatherProvider()),
-        ChangeNotifierProvider(create: (_) => FarmProvider()),
-        ChangeNotifierProvider(create: (_) => NotificationProvider()),
       ],
       child: MaterialApp(
         title: 'AgriClimatic',
@@ -80,8 +74,6 @@ class _MainScreenState extends State<MainScreen> {
 
   final List<Widget> _screens = [
     const WeatherScreen(),
-    const FarmScreen(),
-    const NotificationsScreen(),
   ];
 
   @override
@@ -126,16 +118,6 @@ class _MainScreenState extends State<MainScreen> {
               icon: Icon(Icons.wb_sunny_outlined),
               activeIcon: Icon(Icons.wb_sunny),
               label: 'Weather',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.agriculture_outlined),
-              activeIcon: Icon(Icons.agriculture),
-              label: 'Farm',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.notifications_outlined),
-              activeIcon: Icon(Icons.notifications),
-              label: 'Alerts',
             ),
           ],
         ),

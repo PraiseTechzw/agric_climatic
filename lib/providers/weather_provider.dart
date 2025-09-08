@@ -1,16 +1,16 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import '../models/weather.dart';
 import '../models/weather_alert.dart';
 import '../services/weather_service.dart';
 
-class WeatherProvider with ChangeNotifier {
+class WeatherProvider extends ChangeNotifier {
   final WeatherService _weatherService = WeatherService();
 
   Weather? _currentWeather;
   List<Weather> _hourlyForecast = [];
   List<Weather> _dailyForecast = [];
   List<WeatherAlert> _weatherAlerts = [];
-  String _currentLocation = 'Harare District';
+  String _currentLocation = 'Harare';
   bool _isLoading = false;
   String? _error;
 
@@ -25,7 +25,8 @@ class WeatherProvider with ChangeNotifier {
   Future<void> loadCurrentWeather() async {
     _setLoading(true);
     try {
-      _currentWeather = await _weatherService.getCurrentWeather();
+      _currentWeather =
+          await _weatherService.getCurrentWeather(city: _currentLocation);
       _error = null;
     } catch (e) {
       _error = e.toString();
@@ -37,7 +38,8 @@ class WeatherProvider with ChangeNotifier {
   Future<void> loadForecast() async {
     _setLoading(true);
     try {
-      final forecast = await _weatherService.getForecast();
+      final forecast =
+          await _weatherService.getForecast(city: _currentLocation);
       _hourlyForecast = forecast.hourly;
       _dailyForecast = forecast.daily;
       _error = null;
@@ -63,6 +65,12 @@ class WeatherProvider with ChangeNotifier {
       loadForecast(),
       loadWeatherAlerts(),
     ]);
+  }
+
+  void changeLocation(String location) {
+    _currentLocation = location;
+    notifyListeners();
+    refreshAll();
   }
 
   void _setLoading(bool loading) {

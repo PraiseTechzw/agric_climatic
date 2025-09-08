@@ -7,9 +7,9 @@ class Weather {
   final String condition;
   final String description;
   final String icon;
-  final double? precipitation;
-  final double? pressure;
+  final double pressure;
   final double? visibility;
+  final double precipitation;
 
   Weather({
     required this.id,
@@ -20,40 +20,40 @@ class Weather {
     required this.condition,
     required this.description,
     required this.icon,
-    this.precipitation,
-    this.pressure,
+    required this.pressure,
     this.visibility,
+    required this.precipitation,
   });
 
   factory Weather.fromJson(Map<String, dynamic> json) {
     return Weather(
       id: json['id'] ?? '',
-      dateTime: DateTime.parse(json['dateTime']),
-      temperature: (json['temperature'] ?? 0).toDouble(),
-      humidity: (json['humidity'] ?? 0).toDouble(),
-      windSpeed: (json['windSpeed'] ?? 0).toDouble(),
+      dateTime: DateTime.parse(json['date_time']),
+      temperature: json['temperature'].toDouble(),
+      humidity: json['humidity'].toDouble(),
+      windSpeed: json['wind_speed'].toDouble(),
       condition: json['condition'] ?? '',
       description: json['description'] ?? '',
       icon: json['icon'] ?? '',
-      precipitation: json['precipitation']?.toDouble(),
-      pressure: json['pressure']?.toDouble(),
+      pressure: json['pressure'].toDouble(),
       visibility: json['visibility']?.toDouble(),
+      precipitation: json['precipitation']?.toDouble() ?? 0.0,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'dateTime': dateTime.toIso8601String(),
+      'date_time': dateTime.toIso8601String(),
       'temperature': temperature,
       'humidity': humidity,
-      'windSpeed': windSpeed,
+      'wind_speed': windSpeed,
       'condition': condition,
       'description': description,
       'icon': icon,
-      'precipitation': precipitation,
       'pressure': pressure,
       'visibility': visibility,
+      'precipitation': precipitation,
     };
   }
 }
@@ -66,17 +66,4 @@ class WeatherForecast {
     required this.hourly,
     required this.daily,
   });
-
-  factory WeatherForecast.fromJson(Map<String, dynamic> json) {
-    return WeatherForecast(
-      hourly: (json['hourly'] as List<dynamic>?)
-              ?.map((e) => Weather.fromJson(e))
-              .toList() ??
-          [],
-      daily: (json['daily'] as List<dynamic>?)
-              ?.map((e) => Weather.fromJson(e))
-              .toList() ??
-          [],
-    );
-  }
 }
