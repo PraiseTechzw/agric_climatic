@@ -31,11 +31,7 @@ void main() {
 
       test('should cache and retrieve soil data', () async {
         // Arrange
-        final testData = {
-          'moisture': 50.0,
-          'ph': 6.5,
-          'nutrients': 'good',
-        };
+        final testData = {'moisture': 50.0, 'ph': 6.5, 'nutrients': 'good'};
 
         // Act
         await OfflineService.cacheSoilData(testData);
@@ -64,7 +60,10 @@ void main() {
         expect(retrievedData, isNotNull);
         expect(retrievedData!['crop_recommendation'], equals('maize'));
         expect(retrievedData['yield_prediction'], equals(80.0));
-        expect(retrievedData['irrigation_advice'], equals('No irrigation needed'));
+        expect(
+          retrievedData['irrigation_advice'],
+          equals('No irrigation needed'),
+        );
       });
 
       test('should cache and retrieve alerts', () async {
@@ -113,7 +112,10 @@ void main() {
 
         // Assert
         expect(retrievedTime, isNotNull);
-        expect(retrievedTime!.millisecondsSinceEpoch, equals(testTime.millisecondsSinceEpoch));
+        expect(
+          retrievedTime!.millisecondsSinceEpoch,
+          equals(testTime.millisecondsSinceEpoch),
+        );
       });
 
       test('should determine if sync is needed', () async {

@@ -64,9 +64,9 @@ void main() {
       test('should handle API errors', () async {
         // Arrange
         const city = 'Harare';
-        when(mockClient.get(any)).thenAnswer(
-          (_) async => http.Response('Error', 500),
-        );
+        when(
+          mockClient.get(any),
+        ).thenAnswer((_) async => http.Response('Error', 500));
 
         // Act & Assert
         expect(

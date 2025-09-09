@@ -44,18 +44,21 @@ void main() {
           climateIndicators: {},
         );
 
-        when(mockAgroPredictionService.generateLongTermPrediction(
-          location: anyNamed('location'),
-          startDate: anyNamed('startDate'),
-          daysAhead: anyNamed('daysAhead'),
-        )).thenAnswer((_) async => mockPrediction);
+        when(
+          mockAgroPredictionService.generateLongTermPrediction(
+            location: anyNamed('location'),
+            startDate: anyNamed('startDate'),
+            daysAhead: anyNamed('daysAhead'),
+          ),
+        ).thenAnswer((_) async => mockPrediction);
 
         // Act
-        final result = await mockAgroPredictionService.generateLongTermPrediction(
-          location: location,
-          startDate: startDate,
-          daysAhead: daysAhead,
-        );
+        final result = await mockAgroPredictionService
+            .generateLongTermPrediction(
+              location: location,
+              startDate: startDate,
+              daysAhead: daysAhead,
+            );
 
         // Assert
         expect(result, isA<AgroClimaticPrediction>());
@@ -71,11 +74,13 @@ void main() {
         final startDate = DateTime.now();
         const daysAhead = 7;
 
-        when(mockAgroPredictionService.generateLongTermPrediction(
-          location: anyNamed('location'),
-          startDate: anyNamed('startDate'),
-          daysAhead: anyNamed('daysAhead'),
-        )).thenThrow(Exception('Invalid location'));
+        when(
+          mockAgroPredictionService.generateLongTermPrediction(
+            location: anyNamed('location'),
+            startDate: anyNamed('startDate'),
+            daysAhead: anyNamed('daysAhead'),
+          ),
+        ).thenThrow(Exception('Invalid location'));
 
         // Act & Assert
         expect(
@@ -113,18 +118,21 @@ void main() {
           ),
         ];
 
-        when(mockAgroPredictionService.analyzeSequentialPatterns(
-          location: anyNamed('location'),
-          startDate: anyNamed('startDate'),
-          endDate: anyNamed('endDate'),
-        )).thenAnswer((_) async => mockPatterns);
+        when(
+          mockAgroPredictionService.analyzeSequentialPatterns(
+            location: anyNamed('location'),
+            startDate: anyNamed('startDate'),
+            endDate: anyNamed('endDate'),
+          ),
+        ).thenAnswer((_) async => mockPatterns);
 
         // Act
-        final result = await mockAgroPredictionService.analyzeSequentialPatterns(
-          location: location,
-          startDate: startDate,
-          endDate: endDate,
-        );
+        final result = await mockAgroPredictionService
+            .analyzeSequentialPatterns(
+              location: location,
+              startDate: startDate,
+              endDate: endDate,
+            );
 
         // Assert
         expect(result, isA<List<HistoricalWeatherPattern>>());

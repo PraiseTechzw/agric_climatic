@@ -7,6 +7,7 @@ import 'services/error_handler_service.dart';
 import 'services/logging_service.dart';
 import 'services/environment_service.dart';
 import 'services/offline_service.dart';
+import 'services/performance_service.dart';
 import 'screens/splash_screen.dart';
 import 'screens/weather_screen.dart';
 import 'screens/predictions_screen.dart';
@@ -28,6 +29,9 @@ void main() async {
 
   // Initialize offline service
   await OfflineService.initialize();
+
+  // Initialize performance service
+  await PerformanceService.initialize();
 
   LoggingService.info('Starting AgriClimatic app');
 
