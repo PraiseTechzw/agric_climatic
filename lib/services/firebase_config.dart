@@ -2,6 +2,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:firebase_ai/firebase_ai.dart';
 import '../firebase_options.dart';
 
 class FirebaseConfig {
@@ -9,6 +10,7 @@ class FirebaseConfig {
   static FirebaseFirestore? _firestore;
   static FirebaseAuth? _auth;
   static FirebaseMessaging? _messaging;
+  static FirebaseAI? _firebaseAI;
 
   // Initialize Firebase
   static Future<void> initialize() async {
@@ -22,6 +24,7 @@ class FirebaseConfig {
       _firestore = FirebaseFirestore.instance;
       _auth = FirebaseAuth.instance;
       _messaging = FirebaseMessaging.instance;
+      _firebaseAI = FirebaseAI.googleAI();
 
       // Configure Firestore settings
       _firestore!.settings = const Settings(
@@ -29,12 +32,8 @@ class FirebaseConfig {
         cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
       );
 
-      // Enable offline persistence
-      try {
-        await _firestore!.enablePersistence();
-      } catch (e) {
-        print('Persistence already enabled or not supported: $e');
-      }
+      // Note: enablePersistence is deprecated in newer versions
+      // Offline persistence is enabled by default in newer Firestore versions
 
       _isInitialized = true;
       print('Firebase initialized successfully');
@@ -68,6 +67,14 @@ class FirebaseConfig {
       throw Exception('Firebase not available - using offline mode');
     }
     return _messaging!;
+  }
+
+  // Get Firebase AI instance
+  static FirebaseAI get firebaseAI {
+    if (!_isInitialized || _firebaseAI == null) {
+      throw Exception('Firebase AI not available - using offline mode');
+    }
+    return _firebaseAI!;
   }
 
   // Check if Firebase is initialized

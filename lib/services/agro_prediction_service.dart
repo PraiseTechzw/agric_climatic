@@ -3,11 +3,14 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/weather.dart';
 import '../models/agro_climatic_prediction.dart';
 import '../models/weather_alert.dart';
+import '../models/soil_data.dart';
 import '../services/notification_service.dart';
+import '../services/firebase_ai_service.dart';
 
 class AgroPredictionService {
   final SupabaseClient _supabase = Supabase.instance.client;
   final NotificationService _notificationService = NotificationService();
+  final FirebaseAIService _aiService = FirebaseAIService.instance;
 
   // Zimbabwe crop data and climate zones
   final Map<String, Map<String, dynamic>> _cropData = {
@@ -93,9 +96,12 @@ class AgroPredictionService {
         prediction,
       );
 
-      // Assess risks
-      final pestRisk = _assessPestRisk(prediction, cropRecommendation);
-      final diseaseRisk = _assessDiseaseRisk(prediction, cropRecommendation);
+      // Assess risks using AI
+      final pestRisk = await _assessPestRisk(prediction, cropRecommendation);
+      final diseaseRisk = await _assessDiseaseRisk(
+        prediction,
+        cropRecommendation,
+      );
 
       // Calculate yield prediction
       final yieldPrediction = _calculateYieldPrediction(
@@ -171,8 +177,9 @@ class AgroPredictionService {
 
       return response.map((json) => Weather.fromJson(json)).toList();
     } catch (e) {
-      // Return mock data if Supabase fails
-      return _generateMockHistoricalData(location, startDate, endDate);
+      throw Exception(
+        'Failed to fetch historical weather data for $location: $e',
+      );
     }
   }
 
@@ -296,6 +303,57 @@ class AgroPredictionService {
     String location,
     Map<String, dynamic> prediction,
   ) async {
+    try {
+      // Try to use AI-powered recommendations first
+      final currentWeather = Weather(
+        id: '${location}_${DateTime.now().millisecondsSinceEpoch}',
+        dateTime: DateTime.now(),
+        temperature: prediction['temperature'] ?? 0.0,
+        humidity: prediction['humidity'] ?? 0.0,
+        precipitation: prediction['precipitation'] ?? 0.0,
+        windSpeed: 10.0, // Default wind speed
+        condition: 'Clear',
+        description: 'AI Analysis',
+        icon: '01d',
+        pressure: 1013.25,
+      );
+
+      final soilData = SoilData(
+        id: '${location}_soil_${DateTime.now().millisecondsSinceEpoch}',
+        location: location,
+        ph: 6.5, // Default pH
+        organicMatter: 2.5,
+        nitrogen: 15.0,
+        phosphorus: 8.0,
+        potassium: 120.0,
+        soilMoisture: prediction['soil_moisture'] ?? 50.0,
+        soilTemperature: prediction['temperature'] ?? 22.0,
+        soilType: 'Loam',
+        drainage: 'Good',
+        texture: 'Medium',
+        lastUpdated: DateTime.now(),
+      );
+
+      final season = _getCurrentSeason(DateTime.now());
+
+      final aiRecommendations = await _aiService.generateCropRecommendations(
+        currentWeather: currentWeather,
+        soilData: soilData,
+        location: location,
+        season: season,
+      );
+
+      // Extract the best crop from AI recommendations
+      final recommendedCrops =
+          aiRecommendations['recommended_crops'] as List<String>?;
+      if (recommendedCrops != null && recommendedCrops.isNotEmpty) {
+        return recommendedCrops.first;
+      }
+    } catch (e) {
+      print('AI crop recommendation failed, using fallback: $e');
+    }
+
+    // Fallback to traditional scoring method
     final temp = prediction['temperature'] ?? 0.0;
     final humidity = prediction['humidity'] ?? 0.0;
     final precipitation = prediction['precipitation'] ?? 0.0;
@@ -341,24 +399,102 @@ class AgroPredictionService {
     return bestCrop;
   }
 
-  String _assessPestRisk(Map<String, dynamic> prediction, String crop) {
-    final temp = prediction['temperature'] ?? 0.0;
-    final humidity = prediction['humidity'] ?? 0.0;
+  Future<String> _assessPestRisk(
+    Map<String, dynamic> prediction,
+    String crop,
+  ) async {
+    try {
+      // Use AI-powered pest risk assessment
+      final currentWeather = Weather(
+        id: '${crop}_pest_${DateTime.now().millisecondsSinceEpoch}',
+        dateTime: DateTime.now(),
+        temperature: prediction['temperature'] ?? 0.0,
+        humidity: prediction['humidity'] ?? 0.0,
+        precipitation: prediction['precipitation'] ?? 0.0,
+        windSpeed: 10.0,
+        condition: 'Clear',
+        description: 'Pest Risk Analysis',
+        icon: '01d',
+        pressure: 1013.25,
+      );
 
-    // High temperature and humidity increase pest risk
-    if (temp > 28 && humidity > 75) return 'high';
-    if (temp > 25 && humidity > 65) return 'medium';
-    return 'low';
+      final aiAssessment = await _aiService.assessPestDiseaseRisk(
+        currentWeather: currentWeather,
+        crop: crop,
+        growthStage: 'vegetative', // Default growth stage
+        location: 'Zimbabwe',
+      );
+
+      final highRiskPests = aiAssessment['high_risk_pests'] as List<String>?;
+      if (highRiskPests != null && highRiskPests.isNotEmpty) {
+        return 'high';
+      }
+
+      final diseaseRisks = aiAssessment['disease_risks'] as List<String>?;
+      if (diseaseRisks != null && diseaseRisks.isNotEmpty) {
+        return 'medium';
+      }
+
+      return 'low';
+    } catch (e) {
+      print('AI pest risk assessment failed, using fallback: $e');
+
+      // Fallback to traditional assessment
+      final temp = prediction['temperature'] ?? 0.0;
+      final humidity = prediction['humidity'] ?? 0.0;
+
+      // High temperature and humidity increase pest risk
+      if (temp > 28 && humidity > 75) return 'high';
+      if (temp > 25 && humidity > 65) return 'medium';
+      return 'low';
+    }
   }
 
-  String _assessDiseaseRisk(Map<String, dynamic> prediction, String crop) {
-    final humidity = prediction['humidity'] ?? 0.0;
-    final precipitation = prediction['precipitation'] ?? 0.0;
+  Future<String> _assessDiseaseRisk(
+    Map<String, dynamic> prediction,
+    String crop,
+  ) async {
+    try {
+      // Use AI-powered disease risk assessment
+      final currentWeather = Weather(
+        id: '${crop}_disease_${DateTime.now().millisecondsSinceEpoch}',
+        dateTime: DateTime.now(),
+        temperature: prediction['temperature'] ?? 0.0,
+        humidity: prediction['humidity'] ?? 0.0,
+        precipitation: prediction['precipitation'] ?? 0.0,
+        windSpeed: 10.0,
+        condition: 'Clear',
+        description: 'Disease Risk Analysis',
+        icon: '01d',
+        pressure: 1013.25,
+      );
 
-    // High humidity and precipitation increase disease risk
-    if (humidity > 80 && precipitation > 5) return 'high';
-    if (humidity > 70 && precipitation > 3) return 'medium';
-    return 'low';
+      final aiAssessment = await _aiService.assessPestDiseaseRisk(
+        currentWeather: currentWeather,
+        crop: crop,
+        growthStage: 'vegetative', // Default growth stage
+        location: 'Zimbabwe',
+      );
+
+      final diseaseRisks = aiAssessment['disease_risks'] as List<String>?;
+      if (diseaseRisks != null && diseaseRisks.isNotEmpty) {
+        if (diseaseRisks.length > 2) return 'high';
+        return 'medium';
+      }
+
+      return 'low';
+    } catch (e) {
+      print('AI disease risk assessment failed, using fallback: $e');
+
+      // Fallback to traditional assessment
+      final humidity = prediction['humidity'] ?? 0.0;
+      final precipitation = prediction['precipitation'] ?? 0.0;
+
+      // High humidity and precipitation increase disease risk
+      if (humidity > 80 && precipitation > 5) return 'high';
+      if (humidity > 70 && precipitation > 3) return 'medium';
+      return 'low';
+    }
   }
 
   double _calculateYieldPrediction(
@@ -570,7 +706,6 @@ class AgroPredictionService {
     return anomalies;
   }
 
-
   // Enhanced trend calculation with multiple data points
   Map<String, double> _calculateEnhancedTrends(
     List<double> tempData,
@@ -712,17 +847,6 @@ class AgroPredictionService {
         'Humidity ${avgHumidity.toStringAsFixed(1)}%';
   }
 
-  String _generatePatternSummary(List<Weather> data, String season) {
-    if (data.isEmpty) return 'No data available for $season';
-
-    final avgTemp = _calculateAverage(data.map((w) => w.temperature).toList());
-    final totalPrecip = data
-        .map((w) => w.precipitation)
-        .reduce((a, b) => a + b);
-
-    return '$season: Average temperature ${avgTemp.toStringAsFixed(1)}°C, Total precipitation ${totalPrecip.toStringAsFixed(1)}mm';
-  }
-
   Map<String, double> _getSeasonalAdjustment(
     DateTime date,
     List<HistoricalWeatherPattern> patterns,
@@ -789,37 +913,107 @@ class AgroPredictionService {
     };
   }
 
-  List<Weather> _generateMockHistoricalData(
-    String location,
-    DateTime startDate,
-    DateTime? endDate,
-  ) {
-    final data = <Weather>[];
-    final end = endDate ?? DateTime.now();
-    final random = Random();
+  // NEW: Get comprehensive AI insights for agricultural recommendations
+  Future<Map<String, dynamic>> getAIInsights({
+    required String location,
+    required Weather currentWeather,
+    required SoilData soilData,
+    required String crop,
+    required String growthStage,
+  }) async {
+    try {
+      // Initialize AI service if not already done
+      await _aiService.initialize();
 
-    for (
-      var date = startDate;
-      date.isBefore(end);
-      date = date.add(const Duration(days: 1))
-    ) {
-      data.add(
-        Weather(
-          id: '${location}_${date.millisecondsSinceEpoch}',
-          dateTime: date,
-          temperature: 20 + (random.nextDouble() * 15),
-          humidity: 50 + (random.nextDouble() * 30),
-          windSpeed: 5 + (random.nextDouble() * 10),
-          condition: ['clear', 'cloudy', 'rainy'][random.nextInt(3)],
-          description: 'Mock weather data',
-          icon: '01d',
-          pressure: 1013 + (random.nextDouble() * 20),
-          visibility: 10 + (random.nextDouble() * 5),
-          precipitation: random.nextDouble() * 10,
-        ),
+      // Get comprehensive AI insights
+      final cropRecommendations = await _aiService.generateCropRecommendations(
+        currentWeather: currentWeather,
+        soilData: soilData,
+        location: location,
+        season: _getCurrentSeason(DateTime.now()),
       );
-    }
 
-    return data;
+      final pestDiseaseAssessment = await _aiService.assessPestDiseaseRisk(
+        currentWeather: currentWeather,
+        crop: crop,
+        growthStage: growthStage,
+        location: location,
+      );
+
+      final irrigationAdvice = await _aiService.generateIrrigationAdvice(
+        currentWeather: currentWeather,
+        soilData: soilData,
+        crop: crop,
+        growthStage: growthStage,
+        location: location,
+      );
+
+      final farmingCalendar = await _aiService.generateFarmingCalendar(
+        location: location,
+        crop: crop,
+        startDate: DateTime.now(),
+      );
+
+      final marketInsights = await _aiService.generateMarketInsights(
+        crop: crop,
+        location: location,
+        harvestDate: DateTime.now().add(const Duration(days: 120)),
+      );
+
+      return {
+        'crop_recommendations': cropRecommendations,
+        'pest_disease_assessment': pestDiseaseAssessment,
+        'irrigation_advice': irrigationAdvice,
+        'farming_calendar': farmingCalendar,
+        'market_insights': marketInsights,
+        'timestamp': DateTime.now().toIso8601String(),
+        'location': location,
+        'crop': crop,
+        'growth_stage': growthStage,
+      };
+    } catch (e) {
+      print('Error getting AI insights: $e');
+      return {
+        'error': 'Failed to get AI insights: $e',
+        'timestamp': DateTime.now().toIso8601String(),
+        'location': location,
+        'crop': crop,
+        'growth_stage': growthStage,
+      };
+    }
+  }
+
+  // NEW: Get AI-enhanced weather pattern analysis
+  Future<Map<String, dynamic>> getAIWeatherAnalysis({
+    required String location,
+    required List<Weather> historicalData,
+    required int daysAhead,
+  }) async {
+    try {
+      await _aiService.initialize();
+
+      final weatherAnalysis = await _aiService.analyzeWeatherPatterns(
+        historicalData: historicalData,
+        location: location,
+        daysAhead: daysAhead,
+      );
+
+      return {
+        'weather_analysis': weatherAnalysis,
+        'timestamp': DateTime.now().toIso8601String(),
+        'location': location,
+        'days_ahead': daysAhead,
+        'data_points': historicalData.length,
+      };
+    } catch (e) {
+      print('Error getting AI weather analysis: $e');
+      return {
+        'error': 'Failed to get AI weather analysis: $e',
+        'timestamp': DateTime.now().toIso8601String(),
+        'location': location,
+        'days_ahead': daysAhead,
+        'data_points': historicalData.length,
+      };
+    }
   }
 }

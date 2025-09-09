@@ -3,31 +3,62 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'services/firebase_config.dart';
+import 'services/error_handler_service.dart';
+import 'services/logging_service.dart';
+import 'services/environment_service.dart';
+import 'services/offline_service.dart';
+import 'screens/splash_screen.dart';
 import 'screens/weather_screen.dart';
 import 'screens/predictions_screen.dart';
 import 'screens/analytics_screen.dart';
 import 'screens/soil_data_screen.dart';
 import 'screens/notifications_screen.dart';
+import 'screens/ai_insights_screen.dart';
 import 'providers/weather_provider.dart';
 import 'providers/notification_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Initialize environment configuration
+  EnvironmentService.initialize();
+  
+  // Initialize error handling
+  ErrorHandlerService.initialize();
+  
+  // Initialize offline service
+  await OfflineService.initialize();
+  
+  LoggingService.info('Starting AgriClimatic app');
+
+  // Validate configuration
+  if (!EnvironmentService.validateConfiguration()) {
+    LoggingService.critical('Configuration validation failed');
+    return;
+  }
+
   // Initialize Firebase (with duplicate check)
   try {
-    // Initialize Firebase with fallback
     await FirebaseConfig.initializeWithFallback();
+    LoggingService.info('Firebase initialized successfully');
   } catch (e) {
-    // Firebase already initialized, continue
-    print('Firebase already initialized: $e');
+    LoggingService.warning(
+      'Firebase initialization failed, continuing in offline mode',
+      error: e,
+    );
   }
 
   // Initialize Supabase
-  await Supabase.initialize(
-    url: 'YOUR_SUPABASE_URL',
-    anonKey: 'YOUR_SUPABASE_ANON_KEY',
-  );
+  try {
+    await Supabase.initialize(
+      url: EnvironmentService.supabaseUrl,
+      anonKey: EnvironmentService.supabaseAnonKey,
+    );
+    LoggingService.info('Supabase initialized successfully');
+  } catch (e) {
+    LoggingService.error('Supabase initialization failed', error: e);
+    // Continue without Supabase - app will work in offline mode
+  }
 
   runApp(const MyApp());
 }
@@ -85,7 +116,7 @@ class MyApp extends StatelessWidget {
             backgroundColor: Colors.transparent,
           ),
         ),
-        home: const MainScreen(),
+        home: const SplashScreen(),
         routes: {'/notifications': (context) => const NotificationsScreen()},
       ),
     );
@@ -107,6 +138,7 @@ class _MainScreenState extends State<MainScreen> {
     const PredictionsScreen(),
     const AnalyticsScreen(),
     const SoilDataScreen(),
+    const AIInsightsScreen(),
   ];
 
   @override
@@ -266,6 +298,24 @@ class _MainScreenState extends State<MainScreen> {
                   ),
                 ),
                 label: 'Soil',
+              ),
+              BottomNavigationBarItem(
+                icon: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: _selectedIndex == 4
+                        ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    _selectedIndex == 4
+                        ? Icons.psychology
+                        : Icons.psychology_outlined,
+                    size: 24,
+                  ),
+                ),
+                label: 'AI Insights',
               ),
             ],
           ),

@@ -52,8 +52,7 @@ class WeatherService {
         throw Exception('Failed to fetch weather data: ${response.statusCode}');
       }
     } catch (e) {
-      // Fallback to mock data if API fails
-      return _getMockWeather(city);
+      throw Exception('Failed to get current weather for $city: $e');
     }
   }
 
@@ -73,11 +72,11 @@ class WeatherService {
         return _parseForecastFromOpenMeteo(data);
       } else {
         throw Exception(
-            'Failed to fetch forecast data: ${response.statusCode}');
+          'Failed to fetch forecast data: ${response.statusCode}',
+        );
       }
     } catch (e) {
-      // Fallback to mock data if API fails
-      return _getMockForecast();
+      throw Exception('Failed to get forecast for $city: $e');
     }
   }
 
@@ -108,13 +107,14 @@ class WeatherService {
 
       return response.map((json) => WeatherAlert.fromJson(json)).toList();
     } catch (e) {
-      // Return mock data if Supabase fails
-      return _getMockWeatherAlerts();
+      throw Exception('Failed to fetch weather alerts: $e');
     }
   }
 
   Weather _parseCurrentWeatherFromOpenMeteo(
-      Map<String, dynamic> data, String city) {
+    Map<String, dynamic> data,
+    String city,
+  ) {
     final current = data['current_weather'];
     final hourly = data['hourly'];
 
@@ -147,19 +147,21 @@ class WeatherService {
     final weatherCodes = hourly['weather_code'] as List;
 
     for (int i = 0; i < 24 && i < times.length; i++) {
-      hourlyWeather.add(Weather(
-        id: 'hourly_${i}',
-        dateTime: DateTime.parse(times[i]),
-        temperature: temperatures[i].toDouble(),
-        humidity: humidities[i].toDouble(),
-        windSpeed: windSpeeds[i].toDouble(),
-        condition: _getWeatherCondition(weatherCodes[i]),
-        description: _getWeatherDescription(weatherCodes[i]),
-        icon: _getWeatherIcon(weatherCodes[i]),
-        pressure: 1013.25,
-        visibility: 10.0,
-        precipitation: precipitations[i]?.toDouble() ?? 0.0,
-      ));
+      hourlyWeather.add(
+        Weather(
+          id: 'hourly_${i}',
+          dateTime: DateTime.parse(times[i]),
+          temperature: temperatures[i].toDouble(),
+          humidity: humidities[i].toDouble(),
+          windSpeed: windSpeeds[i].toDouble(),
+          condition: _getWeatherCondition(weatherCodes[i]),
+          description: _getWeatherDescription(weatherCodes[i]),
+          icon: _getWeatherIcon(weatherCodes[i]),
+          pressure: 1013.25,
+          visibility: 10.0,
+          precipitation: precipitations[i]?.toDouble() ?? 0.0,
+        ),
+      );
     }
 
     // Parse daily forecast (next 7 days)
@@ -171,20 +173,22 @@ class WeatherService {
     final dailyWeatherCodes = daily['weather_code'] as List;
 
     for (int i = 0; i < 7 && i < dailyTimes.length; i++) {
-      dailyWeather.add(Weather(
-        id: 'daily_${i}',
-        dateTime: DateTime.parse(dailyTimes[i]),
-        temperature:
-            (dailyMaxTemps[i].toDouble() + dailyMinTemps[i].toDouble()) / 2,
-        humidity: 60.0, // Default humidity for daily forecast
-        windSpeed: 5.0, // Default wind speed
-        condition: _getWeatherCondition(dailyWeatherCodes[i]),
-        description: _getWeatherDescription(dailyWeatherCodes[i]),
-        icon: _getWeatherIcon(dailyWeatherCodes[i]),
-        pressure: 1013.25,
-        visibility: 10.0,
-        precipitation: dailyPrecipitations[i]?.toDouble() ?? 0.0,
-      ));
+      dailyWeather.add(
+        Weather(
+          id: 'daily_${i}',
+          dateTime: DateTime.parse(dailyTimes[i]),
+          temperature:
+              (dailyMaxTemps[i].toDouble() + dailyMinTemps[i].toDouble()) / 2,
+          humidity: 60.0, // Default humidity for daily forecast
+          windSpeed: 5.0, // Default wind speed
+          condition: _getWeatherCondition(dailyWeatherCodes[i]),
+          description: _getWeatherDescription(dailyWeatherCodes[i]),
+          icon: _getWeatherIcon(dailyWeatherCodes[i]),
+          pressure: 1013.25,
+          visibility: 10.0,
+          precipitation: dailyPrecipitations[i]?.toDouble() ?? 0.0,
+        ),
+      );
     }
 
     return WeatherForecast(hourly: hourlyWeather, daily: dailyWeather);
@@ -229,70 +233,5 @@ class WeatherService {
     if (weatherCode <= 86) return '13d';
     if (weatherCode <= 99) return '11d';
     return '01d';
-  }
-
-  Weather _getMockWeather(String city) {
-    final random = DateTime.now().millisecondsSinceEpoch % 100;
-    return Weather(
-      id: 'mock_${DateTime.now().millisecondsSinceEpoch}',
-      dateTime: DateTime.now(),
-      temperature: 20 + (random % 15).toDouble(),
-      humidity: 60 + (random % 30).toDouble(),
-      windSpeed: 5 + (random % 10).toDouble(),
-      condition: ['sunny', 'cloudy', 'rainy', 'clear'][random % 4],
-      description: [
-        'Clear sky',
-        'Partly cloudy',
-        'Light rain',
-        'Sunny'
-      ][random % 4],
-      icon: ['01d', '02d', '10d', '01d'][random % 4],
-      pressure: 1013 + (random % 20).toDouble(),
-      visibility: 10 + (random % 5).toDouble(),
-      precipitation: (random % 10).toDouble(),
-    );
-  }
-
-  WeatherForecast _getMockForecast() {
-    final hourly = <Weather>[];
-    final daily = <Weather>[];
-
-    for (int i = 0; i < 24; i++) {
-      hourly.add(_getMockWeather('Harare'));
-    }
-
-    for (int i = 0; i < 7; i++) {
-      daily.add(_getMockWeather('Harare'));
-    }
-
-    return WeatherForecast(hourly: hourly, daily: daily);
-  }
-
-  List<WeatherAlert> _getMockWeatherAlerts() {
-    return [
-      WeatherAlert(
-        id: 'alert_1',
-        title: 'Heavy Rain Warning',
-        description:
-            'Heavy rainfall expected in the next 24 hours. Take necessary precautions.',
-        severity: 'high',
-        duration: '24 hours',
-        location: 'Harare District',
-        date: DateTime.now(),
-        icon: 'rain',
-        type: 'rain',
-      ),
-      WeatherAlert(
-        id: 'alert_2',
-        title: 'Temperature Alert',
-        description: 'High temperatures expected. Ensure proper irrigation.',
-        severity: 'medium',
-        duration: '48 hours',
-        location: 'Mashonaland East',
-        date: DateTime.now().add(const Duration(days: 1)),
-        icon: 'drought',
-        type: 'drought',
-      ),
-    ];
   }
 }

@@ -5,7 +5,8 @@ import '../models/soil_data.dart';
 
 class ZimbabweApiService {
   // Open-Meteo API for weather data (free, no API key required)
-  static const String _openMeteoBaseUrl = 'https://api.open-meteo.com/v1';
+  static const String _openMeteoBaseUrl =
+      'https://archive-api.open-meteo.com/v1/archive';
 
   // OpenWeatherMap API (free tier available) - for future use
   // static const String _openWeatherBaseUrl = 'https://api.openweathermap.org/data/2.5';
@@ -171,9 +172,29 @@ class ZimbabweApiService {
         throw Exception('City not found: $city');
       }
 
-      // For now, we'll use mock data based on Zimbabwe's soil characteristics
-      // In production, you could integrate with soil databases or satellite data
-      return _generateZimbabweSoilData(city, coords['lat']!, coords['lon']!);
+      // Use Open-Meteo soil data API for real soil information
+      final response = await http.get(
+        Uri.parse(
+          '$_openMeteoBaseUrl/forecast?'
+          'latitude=${coords['lat']}&'
+          'longitude=${coords['lon']}&'
+          'hourly=soil_temperature_0cm,soil_moisture_0_1cm&'
+          'daily=soil_temperature_0cm_max,soil_temperature_0cm_min&'
+          'timezone=Africa/Harare',
+        ),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return _parseSoilDataFromOpenMeteo(
+          data,
+          city,
+          coords['lat']!,
+          coords['lon']!,
+        );
+      } else {
+        throw Exception('Failed to fetch soil data: ${response.statusCode}');
+      }
     } catch (e) {
       throw Exception('Error getting soil data: $e');
     }
@@ -336,28 +357,40 @@ class ZimbabweApiService {
     };
   }
 
-  // Generate Zimbabwe-specific soil data
-  static SoilData _generateZimbabweSoilData(
+  // Parse soil data from Open-Meteo API
+  static SoilData _parseSoilDataFromOpenMeteo(
+    Map<String, dynamic> data,
     String city,
     double lat,
     double lon,
   ) {
-    // Zimbabwe soil characteristics based on region
+    final hourly = data['hourly'] as Map<String, dynamic>;
+
+    // Get current soil temperature and moisture
+    final soilTemps = hourly['soil_temperature_0cm'] as List<dynamic>;
+    final soilMoistures = hourly['soil_moisture_0_1cm'] as List<dynamic>;
+
+    final currentSoilTemp = soilTemps.isNotEmpty
+        ? soilTemps[0].toDouble()
+        : 22.0;
+    final currentSoilMoisture = soilMoistures.isNotEmpty
+        ? soilMoistures[0].toDouble()
+        : 50.0;
+
+    // Get region-specific characteristics
     final region = _getZimbabweRegion(city);
-    final soilType = _getZimbabweSoilType(region);
-    final ph = _getZimbabweSoilPH(region);
 
     return SoilData(
       id: '${city}_soil_${DateTime.now().millisecondsSinceEpoch}',
       location: city,
-      ph: ph,
+      ph: _getZimbabweSoilPH(region),
       organicMatter: _getZimbabweOrganicMatter(region),
       nitrogen: _getZimbabweNitrogen(region),
       phosphorus: _getZimbabwePhosphorus(region),
       potassium: _getZimbabwePotassium(region),
-      soilMoisture: _getZimbabweSoilMoisture(region),
-      soilTemperature: _getZimbabweSoilTemperature(lat),
-      soilType: soilType,
+      soilMoisture: currentSoilMoisture,
+      soilTemperature: currentSoilTemp,
+      soilType: _getZimbabweSoilType(region),
       drainage: _getZimbabweDrainage(region),
       texture: _getZimbabweTexture(region),
       lastUpdated: DateTime.now(),
@@ -485,28 +518,6 @@ class ZimbabweApiService {
       default:
         return 170.0;
     }
-  }
-
-  static double _getZimbabweSoilMoisture(String region) {
-    switch (region) {
-      case 'Mashonaland':
-        return 45.0;
-      case 'Matabeleland':
-        return 35.0;
-      case 'Manicaland':
-        return 50.0;
-      case 'Midlands':
-        return 40.0;
-      case 'Masvingo':
-        return 38.0;
-      default:
-        return 42.0;
-    }
-  }
-
-  static double _getZimbabweSoilTemperature(double lat) {
-    // Soil temperature varies with latitude in Zimbabwe
-    return 22.0 - (lat.abs() * 0.3);
   }
 
   static String _getZimbabweDrainage(String region) {
@@ -662,8 +673,7 @@ class ZimbabweApiService {
     if (values.isEmpty) return 0.0;
     return values.fold(
       0.0,
-      (max, value) =>
-          (value as num).toDouble() > max ? (value as num).toDouble() : max,
+      (max, value) => value.toDouble() > max ? value.toDouble() : max,
     );
   }
 
@@ -671,8 +681,7 @@ class ZimbabweApiService {
     if (values.isEmpty) return 0.0;
     return values.fold(
       double.infinity,
-      (min, value) =>
-          (value as num).toDouble() < min ? (value as num).toDouble() : min,
+      (min, value) => value.toDouble() < min ? value.toDouble() : min,
     );
   }
 }

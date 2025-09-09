@@ -79,26 +79,36 @@ class AgroPredictionService {
     try {
       // Get historical data for pattern analysis
       final historicalData = await _getHistoricalData(
-          location, startDate.subtract(const Duration(days: 365)));
+        location,
+        startDate.subtract(const Duration(days: 365)),
+      );
 
       // Analyze patterns and trends
       final patterns = await _analyzeWeatherPatterns(historicalData);
 
       // Generate predictions based on historical patterns and current conditions
-      final prediction =
-          await _generatePrediction(location, startDate, daysAhead, patterns);
+      final prediction = await _generatePrediction(
+        location,
+        startDate,
+        daysAhead,
+        patterns,
+      );
 
       // Get crop recommendations
-      final cropRecommendation =
-          await _getCropRecommendation(location, prediction);
+      final cropRecommendation = await _getCropRecommendation(
+        location,
+        prediction,
+      );
 
       // Assess risks
       final pestRisk = _assessPestRisk(prediction, cropRecommendation);
       final diseaseRisk = _assessDiseaseRisk(prediction, cropRecommendation);
 
       // Calculate yield prediction
-      final yieldPrediction =
-          _calculateYieldPrediction(prediction, cropRecommendation);
+      final yieldPrediction = _calculateYieldPrediction(
+        prediction,
+        cropRecommendation,
+      );
 
       // Generate alerts
       final weatherAlerts = _generateWeatherAlerts(prediction);
@@ -121,8 +131,10 @@ class AgroPredictionService {
         diseaseRisk: diseaseRisk,
         yieldPrediction: yieldPrediction,
         plantingAdvice: _generatePlantingAdvice(prediction, cropRecommendation),
-        harvestingAdvice:
-            _generateHarvestingAdvice(prediction, cropRecommendation),
+        harvestingAdvice: _generateHarvestingAdvice(
+          prediction,
+          cropRecommendation,
+        ),
         weatherAlerts: weatherAlerts,
         soilConditions: _assessSoilConditions(prediction),
         climateIndicators: _calculateClimateIndicators(prediction, patterns),
@@ -138,16 +150,22 @@ class AgroPredictionService {
     required DateTime endDate,
   }) async {
     try {
-      final historicalData =
-          await _getHistoricalData(location, startDate, endDate);
+      final historicalData = await _getHistoricalData(
+        location,
+        startDate,
+        endDate,
+      );
       return await _analyzeWeatherPatterns(historicalData);
     } catch (e) {
       throw Exception('Failed to analyze patterns: $e');
     }
   }
 
-  Future<List<Weather>> _getHistoricalData(String location, DateTime startDate,
-      [DateTime? endDate]) async {
+  Future<List<Weather>> _getHistoricalData(
+    String location,
+    DateTime startDate, [
+    DateTime? endDate,
+  ]) async {
     try {
       final response = await _supabase
           .from('weather_data')
@@ -159,13 +177,15 @@ class AgroPredictionService {
 
       return response.map((json) => Weather.fromJson(json)).toList();
     } catch (e) {
-      // Return mock data if Supabase fails
-      return _generateMockHistoricalData(location, startDate, endDate);
+      throw Exception(
+        'Failed to fetch historical weather data for $location: $e',
+      );
     }
   }
 
   Future<List<HistoricalWeatherPattern>> _analyzeWeatherPatterns(
-      List<Weather> data) async {
+    List<Weather> data,
+  ) async {
     if (data.isEmpty) return [];
 
     final patterns = <HistoricalWeatherPattern>[];
@@ -176,23 +196,28 @@ class AgroPredictionService {
     for (final season in seasons) {
       final seasonData = _filterBySeason(data, season);
       if (seasonData.isNotEmpty) {
-        patterns.add(HistoricalWeatherPattern(
-          id: '${season}_${DateTime.now().millisecondsSinceEpoch}',
-          startDate: seasonData.first.dateTime,
-          endDate: seasonData.last.dateTime,
-          location: seasonData.first.id.split('_')[0],
-          averageTemperature:
-              _calculateAverage(seasonData.map((w) => w.temperature).toList()),
-          totalPrecipitation:
-              seasonData.map((w) => w.precipitation).reduce((a, b) => a + b),
-          averageHumidity:
-              _calculateAverage(seasonData.map((w) => w.humidity).toList()),
-          season: season,
-          patternType: _determinePatternType(seasonData),
-          anomalies: _detectAnomalies(seasonData),
-          trends: _calculateTrends(seasonData),
-          summary: _generatePatternSummary(seasonData, season),
-        ));
+        patterns.add(
+          HistoricalWeatherPattern(
+            id: '${season}_${DateTime.now().millisecondsSinceEpoch}',
+            startDate: seasonData.first.dateTime,
+            endDate: seasonData.last.dateTime,
+            location: seasonData.first.id.split('_')[0],
+            averageTemperature: _calculateAverage(
+              seasonData.map((w) => w.temperature).toList(),
+            ),
+            totalPrecipitation: seasonData
+                .map((w) => w.precipitation)
+                .reduce((a, b) => a + b),
+            averageHumidity: _calculateAverage(
+              seasonData.map((w) => w.humidity).toList(),
+            ),
+            season: season,
+            patternType: _determinePatternType(seasonData),
+            anomalies: _detectAnomalies(seasonData),
+            trends: _calculateTrends(seasonData),
+            summary: _generatePatternSummary(seasonData, season),
+          ),
+        );
       }
     }
 
@@ -205,27 +230,67 @@ class AgroPredictionService {
     int daysAhead,
     List<HistoricalWeatherPattern> patterns,
   ) async {
-    final random = Random();
-    final baseTemp = 22.0 + (random.nextDouble() * 8.0); // 22-30°C
-    final baseHumidity = 60.0 + (random.nextDouble() * 20.0); // 60-80%
-    final basePrecipitation = random.nextDouble() * 10.0; // 0-10mm
+    // Use historical patterns for more accurate predictions
+    double baseTemp = 22.0;
+    double baseHumidity = 60.0;
+    double basePrecipitation = 0.0;
+
+    // Analyze historical patterns for more accurate predictions
+    if (patterns.isNotEmpty) {
+      final currentSeason = _getCurrentSeason(startDate);
+      final seasonPattern = patterns.firstWhere(
+        (pattern) => pattern.season == currentSeason,
+        orElse: () => patterns.first,
+      );
+
+      // Use historical averages as base values
+      baseTemp = seasonPattern.averageTemperature;
+      baseHumidity = seasonPattern.averageHumidity;
+      basePrecipitation =
+          seasonPattern.totalPrecipitation / 30; // Daily average
+
+      // Add some variation based on historical trends
+      final tempTrend = seasonPattern.trends['temperature_trend'] ?? 0.0;
+      final humidityTrend = seasonPattern.trends['humidity_trend'] ?? 0.0;
+
+      baseTemp += tempTrend * (daysAhead / 30.0); // Trend over time
+      baseHumidity += humidityTrend * (daysAhead / 30.0);
+    }
 
     // Apply seasonal adjustments based on patterns
     final seasonalAdjustment = _getSeasonalAdjustment(startDate, patterns);
 
+    // Add some realistic daily variation
+    final dailyVariation = _getDailyVariation(startDate, daysAhead);
+
     return {
-      'temperature': baseTemp + (seasonalAdjustment['temperature'] as double),
-      'humidity': baseHumidity + (seasonalAdjustment['humidity'] as double),
+      'temperature':
+          (baseTemp +
+                  (seasonalAdjustment['temperature'] as double) +
+                  dailyVariation['temperature']!)
+              .clamp(5.0, 45.0),
+      'humidity':
+          (baseHumidity +
+                  (seasonalAdjustment['humidity'] as double) +
+                  dailyVariation['humidity']!)
+              .clamp(10.0, 100.0),
       'precipitation':
-          basePrecipitation + (seasonalAdjustment['precipitation'] as double),
+          (basePrecipitation +
+                  (seasonalAdjustment['precipitation'] as double) +
+                  dailyVariation['precipitation']!)
+              .clamp(0.0, 50.0),
       'soil_moisture': _calculateSoilMoisture(basePrecipitation, baseHumidity),
-      'evapotranspiration':
-          _calculateEvapotranspiration(baseTemp, baseHumidity),
+      'evapotranspiration': _calculateEvapotranspiration(
+        baseTemp,
+        baseHumidity,
+      ),
     };
   }
 
   Future<String> _getCropRecommendation(
-      String location, Map<String, dynamic> prediction) async {
+    String location,
+    Map<String, dynamic> prediction,
+  ) async {
     final temp = prediction['temperature'] ?? 0.0;
     final humidity = prediction['humidity'] ?? 0.0;
     final precipitation = prediction['precipitation'] ?? 0.0;
@@ -265,8 +330,9 @@ class AgroPredictionService {
     }
 
     // Return the highest scoring crop
-    final bestCrop =
-        cropScores.entries.reduce((a, b) => a.value > b.value ? a : b).key;
+    final bestCrop = cropScores.entries
+        .reduce((a, b) => a.value > b.value ? a : b)
+        .key;
     return bestCrop;
   }
 
@@ -291,7 +357,9 @@ class AgroPredictionService {
   }
 
   double _calculateYieldPrediction(
-      Map<String, dynamic> prediction, String crop) {
+    Map<String, dynamic> prediction,
+    String crop,
+  ) {
     final temp = prediction['temperature'] ?? 0.0;
     final humidity = prediction['humidity'] ?? 0.0;
     final precipitation = prediction['precipitation'] ?? 0.0;
@@ -401,7 +469,9 @@ class AgroPredictionService {
   }
 
   String _generateHarvestingAdvice(
-      Map<String, dynamic> prediction, String crop) {
+    Map<String, dynamic> prediction,
+    String crop,
+  ) {
     final temp = prediction['temperature'] ?? 0.0;
     final precipitation = prediction['precipitation'] ?? 0.0;
 
@@ -428,8 +498,9 @@ class AgroPredictionService {
   }
 
   Map<String, dynamic> _calculateClimateIndicators(
-      Map<String, dynamic> prediction,
-      List<HistoricalWeatherPattern> patterns) {
+    Map<String, dynamic> prediction,
+    List<HistoricalWeatherPattern> patterns,
+  ) {
     return {
       'temperature_trend': 'stable',
       'precipitation_trend': 'increasing',
@@ -467,8 +538,9 @@ class AgroPredictionService {
     if (data.isEmpty) return 'unknown';
 
     final avgTemp = _calculateAverage(data.map((w) => w.temperature).toList());
-    final totalPrecip =
-        data.map((w) => w.precipitation).reduce((a, b) => a + b);
+    final totalPrecip = data
+        .map((w) => w.precipitation)
+        .reduce((a, b) => a + b);
 
     if (avgTemp > 25 && totalPrecip > 100) return 'hot_wet';
     if (avgTemp > 25 && totalPrecip < 50) return 'hot_dry';
@@ -513,39 +585,42 @@ class AgroPredictionService {
     if (data.isEmpty) return 'No data available for $season';
 
     final avgTemp = _calculateAverage(data.map((w) => w.temperature).toList());
-    final totalPrecip =
-        data.map((w) => w.precipitation).reduce((a, b) => a + b);
+    final totalPrecip = data
+        .map((w) => w.precipitation)
+        .reduce((a, b) => a + b);
 
     return '$season: Average temperature ${avgTemp.toStringAsFixed(1)}°C, Total precipitation ${totalPrecip.toStringAsFixed(1)}mm';
   }
 
   Map<String, double> _getSeasonalAdjustment(
-      DateTime date, List<HistoricalWeatherPattern> patterns) {
+    DateTime date,
+    List<HistoricalWeatherPattern> patterns,
+  ) {
     // Simplified seasonal adjustments
     final month = date.month;
     if (month >= 12 || month <= 2) {
       return {
         'temperature': 3.0,
         'humidity': 10.0,
-        'precipitation': 2.0
+        'precipitation': 2.0,
       }; // Summer
     } else if (month >= 3 && month <= 5) {
       return {
         'temperature': -2.0,
         'humidity': -5.0,
-        'precipitation': 1.0
+        'precipitation': 1.0,
       }; // Autumn
     } else if (month >= 6 && month <= 8) {
       return {
         'temperature': -5.0,
         'humidity': -15.0,
-        'precipitation': -1.0
+        'precipitation': -1.0,
       }; // Winter
     } else {
       return {
         'temperature': 1.0,
         'humidity': 5.0,
-        'precipitation': 0.5
+        'precipitation': 0.5,
       }; // Spring
     }
   }
@@ -558,30 +633,28 @@ class AgroPredictionService {
     return (temperature * 0.5 - humidity * 0.2).clamp(0.0, 10.0);
   }
 
-  List<Weather> _generateMockHistoricalData(
-      String location, DateTime startDate, DateTime? endDate) {
-    final data = <Weather>[];
-    final end = endDate ?? DateTime.now();
-    final random = Random();
+  // Get current season based on date
+  String _getCurrentSeason(DateTime date) {
+    final month = date.month;
+    if (month >= 12 || month <= 2) return 'summer';
+    if (month >= 3 && month <= 5) return 'autumn';
+    if (month >= 6 && month <= 8) return 'winter';
+    return 'spring';
+  }
 
-    for (var date = startDate;
-        date.isBefore(end);
-        date = date.add(const Duration(days: 1))) {
-      data.add(Weather(
-        id: '${location}_${date.millisecondsSinceEpoch}',
-        dateTime: date,
-        temperature: 20 + (random.nextDouble() * 15),
-        humidity: 50 + (random.nextDouble() * 30),
-        windSpeed: 5 + (random.nextDouble() * 10),
-        condition: ['clear', 'cloudy', 'rainy'][random.nextInt(3)],
-        description: 'Mock weather data',
-        icon: '01d',
-        pressure: 1013 + (random.nextDouble() * 20),
-        visibility: 10 + (random.nextDouble() * 5),
-        precipitation: random.nextDouble() * 10,
-      ));
-    }
+  // Get daily variation for more realistic predictions
+  Map<String, double> _getDailyVariation(DateTime date, int daysAhead) {
+    final random = Random(date.millisecondsSinceEpoch + daysAhead);
 
-    return data;
+    // Simulate weather fronts and daily patterns
+    final tempVariation = (random.nextDouble() - 0.5) * 6.0; // ±3°C
+    final humidityVariation = (random.nextDouble() - 0.5) * 20.0; // ±10%
+    final precipVariation = random.nextDouble() * 5.0; // 0-5mm
+
+    return {
+      'temperature': tempVariation,
+      'humidity': humidityVariation,
+      'precipitation': precipVariation,
+    };
   }
 }
