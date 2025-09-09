@@ -5,11 +5,17 @@ import '../models/agro_climatic_prediction.dart';
 import '../services/weather_service.dart';
 import '../services/agro_prediction_service.dart';
 import '../services/notification_service.dart';
+import '../services/zimbabwe_api_service.dart';
+import '../services/firebase_service.dart';
+import '../services/location_service.dart';
+import '../widgets/location_permission_handler.dart';
+import '../services/offline_storage_service.dart';
 
 class WeatherProvider extends ChangeNotifier {
   final WeatherService _weatherService = WeatherService();
   final AgroPredictionService _predictionService = AgroPredictionService();
   final NotificationService _notificationService = NotificationService();
+  final LocationService _locationService = LocationService();
 
   Weather? _currentWeather;
   List<Weather> _hourlyForecast = [];
@@ -34,14 +40,80 @@ class WeatherProvider extends ChangeNotifier {
   Future<void> loadCurrentWeather() async {
     _setLoading(true);
     try {
-      _currentWeather = await _weatherService.getCurrentWeather(
-        city: _currentLocation,
+      // Try Zimbabwe API first
+      _currentWeather = await ZimbabweApiService.getCurrentWeather(
+        _currentLocation,
       );
+
+      // Save to Firebase and offline storage
+      if (_currentWeather != null) {
+        await FirebaseService.saveZimbabweWeatherData(_currentWeather!);
+        await OfflineStorageService.saveWeatherData(_currentWeather!);
+      }
+
       _error = null;
     } catch (e) {
-      _error = e.toString();
+      // Fallback to original service
+      try {
+        _currentWeather = await _weatherService.getCurrentWeather(
+          city: _currentLocation,
+        );
+        _error = null;
+      } catch (fallbackError) {
+        _error = 'Failed to load weather: $e';
+      }
     } finally {
       _setLoading(false);
+    }
+  }
+
+  // Detect location automatically
+  Future<void> detectLocation() async {
+    _setLoading(true);
+    try {
+      // Check and request location permission first
+      final hasPermission =
+          await LocationPermissionHandler.requestLocationPermission();
+
+      if (!hasPermission) {
+        _error = 'Location permission denied. Using default location.';
+        _setLoading(false);
+        return;
+      }
+
+      // Get current location
+      await _locationService.getCurrentLocation();
+
+      // Update current location if detected
+      if (_locationService.currentCity != null) {
+        _currentLocation = _locationService.currentCity!;
+        notifyListeners();
+
+        // Load weather for detected location
+        await loadCurrentWeather();
+      } else {
+        _error = 'Could not detect your location. Using default location.';
+      }
+    } catch (e) {
+      _error = 'Location detection failed: $e. Using default location.';
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // Get location service instance
+  LocationService get locationService => _locationService;
+
+  // Load cached data when offline
+  Future<void> loadCachedData() async {
+    try {
+      final cachedWeather = await OfflineStorageService.getCachedWeatherData();
+      if (cachedWeather.isNotEmpty) {
+        _currentWeather = cachedWeather.last; // Get most recent
+        notifyListeners();
+      }
+    } catch (e) {
+      print('Failed to load cached data: $e');
     }
   }
 

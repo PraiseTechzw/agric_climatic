@@ -2,11 +2,12 @@ import 'package:agric_climatic/providers/agro_climatic_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'firebase_options.dart';
+import 'services/firebase_config.dart';
 import 'screens/weather_screen.dart';
 import 'screens/predictions_screen.dart';
 import 'screens/analytics_screen.dart';
+import 'screens/soil_data_screen.dart';
+import 'screens/notifications_screen.dart';
 import 'providers/weather_provider.dart';
 import 'providers/notification_provider.dart';
 
@@ -15,9 +16,8 @@ void main() async {
 
   // Initialize Firebase (with duplicate check)
   try {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
+    // Initialize Firebase with fallback
+    await FirebaseConfig.initializeWithFallback();
   } catch (e) {
     // Firebase already initialized, continue
     print('Firebase already initialized: $e');
@@ -55,27 +55,38 @@ class MyApp extends StatelessWidget {
             centerTitle: true,
             elevation: 0,
             scrolledUnderElevation: 0,
+            surfaceTintColor: Colors.transparent,
           ),
           cardTheme: CardThemeData(
-            elevation: 2,
+            elevation: 0,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(20),
             ),
+            surfaceTintColor: Colors.transparent,
+            shadowColor: Colors.black.withOpacity(0.1),
           ),
           elevatedButtonTheme: ElevatedButtonThemeData(
             style: ElevatedButton.styleFrom(
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(16),
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+              elevation: 0,
+              shadowColor: Colors.transparent,
             ),
           ),
           floatingActionButtonTheme: const FloatingActionButtonThemeData(
             shape: CircleBorder(),
-            elevation: 4,
+            elevation: 8,
+          ),
+          bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+            elevation: 0,
+            type: BottomNavigationBarType.fixed,
+            backgroundColor: Colors.transparent,
           ),
         ),
         home: const MainScreen(),
+        routes: {'/notifications': (context) => const NotificationsScreen()},
       ),
     );
   }
@@ -95,6 +106,7 @@ class _MainScreenState extends State<MainScreen> {
     const WeatherScreen(),
     const PredictionsScreen(),
     const AnalyticsScreen(),
+    const SoilDataScreen(),
   ];
 
   @override
@@ -112,57 +124,151 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBody: true,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
             colors: [
-              Theme.of(context).colorScheme.primaryContainer.withOpacity(0.1),
+              Theme.of(context).colorScheme.primaryContainer.withOpacity(0.05),
               Theme.of(context).colorScheme.surface,
+              Theme.of(
+                context,
+              ).colorScheme.secondaryContainer.withOpacity(0.05),
             ],
           ),
         ),
-        child: _screens[_selectedIndex],
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 300),
+          transitionBuilder: (child, animation) {
+            return SlideTransition(
+              position:
+                  Tween<Offset>(
+                    begin: const Offset(1.0, 0.0),
+                    end: Offset.zero,
+                  ).animate(
+                    CurvedAnimation(parent: animation, curve: Curves.easeInOut),
+                  ),
+              child: child,
+            );
+          },
+          child: Container(
+            key: ValueKey(_selectedIndex),
+            child: _screens[_selectedIndex],
+          ),
+        ),
       ),
       bottomNavigationBar: Container(
+        margin: const EdgeInsets.all(16),
         decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: BorderRadius.circular(25),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.1),
-              blurRadius: 10,
-              offset: const Offset(0, -2),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
             ),
           ],
         ),
-        child: BottomNavigationBar(
-          currentIndex: _selectedIndex,
-          onTap: (index) {
-            setState(() {
-              _selectedIndex = index;
-            });
-          },
-          type: BottomNavigationBarType.fixed,
-          selectedItemColor: Theme.of(context).colorScheme.primary,
-          unselectedItemColor: Colors.grey[600],
-          selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600),
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.wb_sunny_outlined),
-              activeIcon: Icon(Icons.wb_sunny),
-              label: 'Weather',
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(25),
+          child: BottomNavigationBar(
+            currentIndex: _selectedIndex,
+            onTap: (index) {
+              setState(() {
+                _selectedIndex = index;
+              });
+            },
+            type: BottomNavigationBarType.fixed,
+            backgroundColor: Colors.transparent,
+            selectedItemColor: Theme.of(context).colorScheme.primary,
+            unselectedItemColor: Colors.grey[500],
+            selectedLabelStyle: const TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 12,
             ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.analytics_outlined),
-              activeIcon: Icon(Icons.analytics),
-              label: 'Predictions',
+            unselectedLabelStyle: const TextStyle(
+              fontWeight: FontWeight.w500,
+              fontSize: 12,
             ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.trending_up_outlined),
-              activeIcon: Icon(Icons.trending_up),
-              label: 'Analytics',
-            ),
-          ],
+            elevation: 0,
+            items: [
+              BottomNavigationBarItem(
+                icon: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: _selectedIndex == 0
+                        ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    _selectedIndex == 0
+                        ? Icons.wb_sunny
+                        : Icons.wb_sunny_outlined,
+                    size: 24,
+                  ),
+                ),
+                label: 'Weather',
+              ),
+              BottomNavigationBarItem(
+                icon: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: _selectedIndex == 1
+                        ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    _selectedIndex == 1
+                        ? Icons.analytics
+                        : Icons.analytics_outlined,
+                    size: 24,
+                  ),
+                ),
+                label: 'Predictions',
+              ),
+              BottomNavigationBarItem(
+                icon: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: _selectedIndex == 2
+                        ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    _selectedIndex == 2
+                        ? Icons.trending_up
+                        : Icons.trending_up_outlined,
+                    size: 24,
+                  ),
+                ),
+                label: 'Analytics',
+              ),
+              BottomNavigationBarItem(
+                icon: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: _selectedIndex == 3
+                        ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    _selectedIndex == 3
+                        ? Icons.terrain
+                        : Icons.terrain_outlined,
+                    size: 24,
+                  ),
+                ),
+                label: 'Soil',
+              ),
+            ],
+          ),
         ),
       ),
     );

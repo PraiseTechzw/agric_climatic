@@ -1,4 +1,4 @@
-import 'package:agric_climatic/services/agro_climatic_service.dart';
+import 'package:agric_climatic/services/agro_prediction_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -23,7 +23,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     '3 Months',
     '6 Months',
     '1 Year',
-    '2 Years'
+    '2 Years',
   ];
 
   @override
@@ -81,45 +81,149 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Weather Analytics'),
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                Icons.trending_up,
+                color: Theme.of(context).colorScheme.primary,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Text(
+              'Sequential Weather Pattern Analysis',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 24),
+            ),
+          ],
+        ),
         actions: [
-          PopupMenuButton<String>(
-            onSelected: (value) {
-              setState(() {
-                _selectedTimeframe = value;
-              });
-              _loadAnalytics();
-            },
-            itemBuilder: (context) => _timeframes.map((timeframe) {
-              return PopupMenuItem<String>(
-                value: timeframe,
-                child: Text(timeframe),
-              );
-            }).toList(),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(_selectedTimeframe),
-                  const Icon(Icons.arrow_drop_down),
-                ],
+          Container(
+            margin: const EdgeInsets.only(right: 8),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: PopupMenuButton<String>(
+              onSelected: (value) {
+                setState(() {
+                  _selectedTimeframe = value;
+                });
+                _loadAnalytics();
+              },
+              itemBuilder: (context) => _timeframes.map((timeframe) {
+                return PopupMenuItem<String>(
+                  value: timeframe,
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.calendar_today,
+                        size: 16,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(timeframe),
+                    ],
+                  ),
+                );
+              }).toList(),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      _selectedTimeframe,
+                      style: const TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                    const SizedBox(width: 4),
+                    const Icon(Icons.arrow_drop_down, size: 20),
+                  ],
+                ),
               ),
             ),
           ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadAnalytics,
+          Container(
+            margin: const EdgeInsets.only(right: 16),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.notifications_outlined),
+              onPressed: () {
+                Navigator.pushNamed(context, '/notifications');
+              },
+            ),
           ),
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? _buildLoadingState()
           : _error != null
-              ? _buildErrorWidget()
-              : _patterns.isEmpty
-                  ? _buildEmptyState()
-                  : _buildAnalyticsContent(),
+          ? _buildErrorWidget()
+          : _patterns.isEmpty
+          ? RefreshIndicator(
+              onRefresh: _loadAnalytics,
+              child: _buildEmptyState(),
+            )
+          : RefreshIndicator(
+              onRefresh: _loadAnalytics,
+              child: _buildAnalyticsContent(),
+            ),
+    );
+  }
+
+  Widget _buildLoadingState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 100,
+            height: 100,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                  Theme.of(context).colorScheme.secondary.withOpacity(0.1),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(50),
+            ),
+            child: const Center(
+              child: CircularProgressIndicator(strokeWidth: 4),
+            ),
+          ),
+          const SizedBox(height: 32),
+          Text(
+            'Loading Analytics...',
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Analyzing historical weather patterns',
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
+          ),
+        ],
+      ),
     );
   }
 
@@ -128,11 +232,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.error_outline,
-            size: 64,
-            color: Colors.red[300],
-          ),
+          Icon(Icons.error_outline, size: 64, color: Colors.red[300]),
           const SizedBox(height: 16),
           Text(
             'Failed to load analytics',
@@ -145,10 +245,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 16),
-          ElevatedButton(
-            onPressed: _loadAnalytics,
-            child: const Text('Retry'),
-          ),
+          ElevatedButton(onPressed: _loadAnalytics, child: const Text('Retry')),
         ],
       ),
     );
@@ -159,11 +256,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.analytics_outlined,
-            size: 64,
-            color: Colors.grey[400],
-          ),
+          Icon(Icons.analytics_outlined, size: 64, color: Colors.grey[400]),
           const SizedBox(height: 16),
           Text(
             'No analytics data available',
@@ -188,6 +281,11 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Pattern Analysis Overview
+            _buildPatternAnalysisOverview(),
+
+            const SizedBox(height: 20),
+
             // Summary cards
             _buildSummaryCards(),
 
@@ -216,17 +314,163 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     );
   }
 
+  Widget _buildPatternAnalysisOverview() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Theme.of(context).colorScheme.primary.withOpacity(0.1),
+            Theme.of(context).colorScheme.secondary.withOpacity(0.05),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.analytics,
+                color: Theme.of(context).colorScheme.primary,
+                size: 24,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Historical Pattern Analysis',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Analyzing ${_patterns.length} weather patterns from ${_selectedTimeframe.toLowerCase()} of historical data',
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: _buildAnalysisMetric(
+                  'Patterns Found',
+                  '${_patterns.length}',
+                  'Seasonal & Monthly',
+                  Colors.blue,
+                  Icons.timeline,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildAnalysisMetric(
+                  'Anomalies',
+                  '${_patterns.where((p) => p.anomalies.isNotEmpty).length}',
+                  'Detected',
+                  Colors.orange,
+                  Icons.warning,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: _buildAnalysisMetric(
+                  'Trends',
+                  '${_patterns.where((p) => p.trends.isNotEmpty).length}',
+                  'Identified',
+                  Colors.green,
+                  Icons.trending_up,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildAnalysisMetric(
+                  'Time Period',
+                  _selectedTimeframe,
+                  'Analysis Range',
+                  Colors.purple,
+                  Icons.calendar_today,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAnalysisMetric(
+    String label,
+    String value,
+    String description,
+    Color color,
+    IconData icon,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: 20),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            description,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildSummaryCards() {
     if (_patterns.isEmpty) return const SizedBox.shrink();
 
     final avgTemp =
         _patterns.map((p) => p.averageTemperature).reduce((a, b) => a + b) /
-            _patterns.length;
-    final totalPrecip =
-        _patterns.map((p) => p.totalPrecipitation).reduce((a, b) => a + b);
+        _patterns.length;
+    final totalPrecip = _patterns
+        .map((p) => p.totalPrecipitation)
+        .reduce((a, b) => a + b);
     final avgHumidity =
         _patterns.map((p) => p.averageHumidity).reduce((a, b) => a + b) /
-            _patterns.length;
+        _patterns.length;
 
     return Row(
       children: [
@@ -261,7 +505,11 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   }
 
   Widget _buildSummaryCard(
-      String title, String value, IconData icon, Color color) {
+    String title,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(12),
@@ -278,9 +526,9 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
             Text(
               value,
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: color,
-                    fontWeight: FontWeight.bold,
-                  ),
+                color: color,
+                fontWeight: FontWeight.bold,
+              ),
               textAlign: TextAlign.center,
             ),
           ],
@@ -327,16 +575,20 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                       ),
                     ),
                     topTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false)),
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
                     rightTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false)),
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
                   ),
                   borderData: FlBorderData(show: true),
                   lineBarsData: [
                     LineChartBarData(
                       spots: _patterns.asMap().entries.map((entry) {
-                        return FlSpot(entry.key.toDouble(),
-                            entry.value.averageTemperature);
+                        return FlSpot(
+                          entry.key.toDouble(),
+                          entry.value.averageTemperature,
+                        );
                       }).toList(),
                       isCurved: true,
                       color: Colors.orange,
@@ -370,7 +622,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
               child: BarChart(
                 BarChartData(
                   alignment: BarChartAlignment.spaceAround,
-                  maxY: _patterns
+                  maxY:
+                      _patterns
                           .map((p) => p.totalPrecipitation)
                           .reduce((a, b) => a > b ? a : b) +
                       10,
@@ -395,9 +648,11 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                       ),
                     ),
                     topTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false)),
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
                     rightTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false)),
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
                   ),
                   borderData: FlBorderData(show: true),
                   barGroups: _patterns.asMap().entries.map((entry) {
@@ -457,23 +712,24 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
             children: [
               Text(
                 pattern.season.toUpperCase(),
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: _getPatternTypeColor(pattern.patternType)
-                      .withOpacity(0.1),
+                  color: _getPatternTypeColor(
+                    pattern.patternType,
+                  ).withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
                   pattern.patternType.replaceAll('_', ' ').toUpperCase(),
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: _getPatternTypeColor(pattern.patternType),
-                        fontWeight: FontWeight.w600,
-                      ),
+                    color: _getPatternTypeColor(pattern.patternType),
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ],
@@ -482,16 +738,22 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
           Row(
             children: [
               Expanded(
-                child: _buildPatternMetric('Temp',
-                    '${pattern.averageTemperature.toStringAsFixed(1)}°C'),
+                child: _buildPatternMetric(
+                  'Temp',
+                  '${pattern.averageTemperature.toStringAsFixed(1)}°C',
+                ),
               ),
               Expanded(
-                child: _buildPatternMetric('Precip',
-                    '${pattern.totalPrecipitation.toStringAsFixed(1)}mm'),
+                child: _buildPatternMetric(
+                  'Precip',
+                  '${pattern.totalPrecipitation.toStringAsFixed(1)}mm',
+                ),
               ),
               Expanded(
-                child: _buildPatternMetric('Humidity',
-                    '${pattern.averageHumidity.toStringAsFixed(1)}%'),
+                child: _buildPatternMetric(
+                  'Humidity',
+                  '${pattern.averageHumidity.toStringAsFixed(1)}%',
+                ),
               ),
             ],
           ),
@@ -499,9 +761,9 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
             const SizedBox(height: 8),
             Text(
               'Anomalies: ${pattern.anomalies.join(', ')}',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Colors.red[600],
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: Colors.red[600]),
             ),
           ],
         ],
@@ -512,15 +774,12 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   Widget _buildPatternMetric(String label, String value) {
     return Column(
       children: [
-        Text(
-          label,
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
+        Text(label, style: Theme.of(context).textTheme.bodySmall),
         Text(
           value,
-          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
         ),
       ],
     );
@@ -559,22 +818,19 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
         children: [
           Text(
             '${pattern.season.toUpperCase()} Analysis',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
-          Text(
-            pattern.summary,
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
+          Text(pattern.summary, style: Theme.of(context).textTheme.bodyMedium),
           if (pattern.trends.isNotEmpty) ...[
             const SizedBox(height: 8),
             Text(
               'Trends: ${pattern.trends.entries.map((e) => '${e.key}: ${e.value.toStringAsFixed(2)}').join(', ')}',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Colors.blue[700],
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: Colors.blue[700]),
             ),
           ],
         ],

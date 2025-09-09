@@ -188,30 +188,36 @@ class AgroPredictionService {
     for (final season in seasons) {
       final seasonData = _filterBySeason(data, season);
       if (seasonData.isNotEmpty) {
+        // Enhanced pattern analysis
+        final tempData = seasonData.map((w) => w.temperature).toList();
+        final humidityData = seasonData.map((w) => w.humidity).toList();
+        final precipData = seasonData.map((w) => w.precipitation).toList();
+
         patterns.add(
           HistoricalWeatherPattern(
             id: '${season}_${DateTime.now().millisecondsSinceEpoch}',
             startDate: seasonData.first.dateTime,
             endDate: seasonData.last.dateTime,
             location: seasonData.first.id.split('_')[0],
-            averageTemperature: _calculateAverage(
-              seasonData.map((w) => w.temperature).toList(),
-            ),
-            totalPrecipitation: seasonData
-                .map((w) => w.precipitation)
-                .reduce((a, b) => a + b),
-            averageHumidity: _calculateAverage(
-              seasonData.map((w) => w.humidity).toList(),
-            ),
+            averageTemperature: _calculateAverage(tempData),
+            totalPrecipitation: precipData.reduce((a, b) => a + b),
+            averageHumidity: _calculateAverage(humidityData),
             season: season,
             patternType: _determinePatternType(seasonData),
             anomalies: _detectAnomalies(seasonData),
-            trends: _calculateTrends(seasonData),
-            summary: _generatePatternSummary(seasonData, season),
+            trends: _calculateEnhancedTrends(
+              tempData,
+              humidityData,
+              precipData,
+            ),
+            summary: _generateEnhancedPatternSummary(seasonData, season),
           ),
         );
       }
     }
+
+    // Add monthly patterns for more granular analysis
+    patterns.addAll(_analyzeMonthlyPatterns(data));
 
     return patterns;
   }
@@ -223,18 +229,61 @@ class AgroPredictionService {
     List<HistoricalWeatherPattern> patterns,
   ) async {
     final random = Random();
-    final baseTemp = 22.0 + (random.nextDouble() * 8.0); // 22-30°C
-    final baseHumidity = 60.0 + (random.nextDouble() * 20.0); // 60-80%
-    final basePrecipitation = random.nextDouble() * 10.0; // 0-10mm
+
+    // Enhanced prediction algorithm with historical pattern analysis
+    double baseTemp = 22.0;
+    double baseHumidity = 60.0;
+    double basePrecipitation = 0.0;
+
+    // Analyze historical patterns for more accurate predictions
+    if (patterns.isNotEmpty) {
+      final currentSeason = _getCurrentSeason(startDate);
+      final seasonPattern = patterns.firstWhere(
+        (pattern) => pattern.season == currentSeason,
+        orElse: () => patterns.first,
+      );
+
+      // Use historical averages as base values
+      baseTemp = seasonPattern.averageTemperature;
+      baseHumidity = seasonPattern.averageHumidity;
+      basePrecipitation =
+          seasonPattern.totalPrecipitation / 30; // Daily average
+
+      // Add some variation based on historical trends
+      final tempTrend = seasonPattern.trends['temperature_trend'] ?? 0.0;
+      final humidityTrend = seasonPattern.trends['humidity_trend'] ?? 0.0;
+
+      baseTemp += tempTrend * (daysAhead / 30.0); // Trend over time
+      baseHumidity += humidityTrend * (daysAhead / 30.0);
+    } else {
+      // Fallback to random values if no historical data
+      baseTemp = 22.0 + (random.nextDouble() * 8.0);
+      baseHumidity = 60.0 + (random.nextDouble() * 20.0);
+      basePrecipitation = random.nextDouble() * 10.0;
+    }
 
     // Apply seasonal adjustments based on patterns
     final seasonalAdjustment = _getSeasonalAdjustment(startDate, patterns);
 
+    // Add some realistic daily variation
+    final dailyVariation = _getDailyVariation(startDate, daysAhead);
+
     return {
-      'temperature': baseTemp + (seasonalAdjustment['temperature'] as double),
-      'humidity': baseHumidity + (seasonalAdjustment['humidity'] as double),
+      'temperature':
+          (baseTemp +
+                  (seasonalAdjustment['temperature'] as double) +
+                  dailyVariation['temperature']!)
+              .clamp(5.0, 45.0),
+      'humidity':
+          (baseHumidity +
+                  (seasonalAdjustment['humidity'] as double) +
+                  dailyVariation['humidity']!)
+              .clamp(10.0, 100.0),
       'precipitation':
-          basePrecipitation + (seasonalAdjustment['precipitation'] as double),
+          (basePrecipitation +
+                  (seasonalAdjustment['precipitation'] as double) +
+                  dailyVariation['precipitation']!)
+              .clamp(0.0, 50.0),
       'soil_moisture': _calculateSoilMoisture(basePrecipitation, baseHumidity),
       'evapotranspiration': _calculateEvapotranspiration(
         baseTemp,
@@ -521,21 +570,146 @@ class AgroPredictionService {
     return anomalies;
   }
 
-  Map<String, double> _calculateTrends(List<Weather> data) {
-    if (data.length < 2) return {};
 
-    final temps = data.map((w) => w.temperature).toList();
-    final firstHalf = temps.take(temps.length ~/ 2).toList();
-    final secondHalf = temps.skip(temps.length ~/ 2).toList();
+  // Enhanced trend calculation with multiple data points
+  Map<String, double> _calculateEnhancedTrends(
+    List<double> tempData,
+    List<double> humidityData,
+    List<double> precipData,
+  ) {
+    if (tempData.length < 3) return {};
 
-    final firstAvg = _calculateAverage(firstHalf);
-    final secondAvg = _calculateAverage(secondHalf);
+    // Calculate linear regression trends
+    final tempTrend = _calculateLinearTrend(tempData);
+    final humidityTrend = _calculateLinearTrend(humidityData);
+    final precipTrend = _calculateLinearTrend(precipData);
 
     return {
-      'temperature_trend': secondAvg - firstAvg,
-      'precipitation_trend': 0.0, // Simplified
-      'humidity_trend': 0.0, // Simplified
+      'temperature_trend': tempTrend,
+      'humidity_trend': humidityTrend,
+      'precipitation_trend': precipTrend,
+      'volatility_temperature': _calculateVolatility(tempData),
+      'volatility_humidity': _calculateVolatility(humidityData),
+      'volatility_precipitation': _calculateVolatility(precipData),
     };
+  }
+
+  // Calculate linear trend using simple linear regression
+  double _calculateLinearTrend(List<double> data) {
+    if (data.length < 2) return 0.0;
+
+    final n = data.length;
+    final x = List.generate(n, (i) => i.toDouble());
+
+    final sumX = x.reduce((a, b) => a + b);
+    final sumY = data.reduce((a, b) => a + b);
+    final sumXY = x
+        .asMap()
+        .entries
+        .map((e) => e.key * data[e.key])
+        .reduce((a, b) => a + b);
+    final sumXX = x.map((x) => x * x).reduce((a, b) => a + b);
+
+    final slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+    return slope;
+  }
+
+  // Calculate volatility (standard deviation)
+  double _calculateVolatility(List<double> data) {
+    if (data.length < 2) return 0.0;
+
+    final mean = _calculateAverage(data);
+    final variance =
+        data.map((x) => (x - mean) * (x - mean)).reduce((a, b) => a + b) /
+        data.length;
+    return variance;
+  }
+
+  // Analyze monthly patterns for more granular insights
+  List<HistoricalWeatherPattern> _analyzeMonthlyPatterns(List<Weather> data) {
+    final monthlyPatterns = <HistoricalWeatherPattern>[];
+    final monthlyData = <int, List<Weather>>{};
+
+    // Group data by month
+    for (final weather in data) {
+      final month = weather.dateTime.month;
+      monthlyData[month] ??= [];
+      monthlyData[month]!.add(weather);
+    }
+
+    // Analyze each month
+    for (final entry in monthlyData.entries) {
+      final monthData = entry.value;
+      if (monthData.length >= 5) {
+        // Need minimum data points
+        final monthName = _getMonthName(entry.key);
+        final tempData = monthData.map((w) => w.temperature).toList();
+        final humidityData = monthData.map((w) => w.humidity).toList();
+        final precipData = monthData.map((w) => w.precipitation).toList();
+
+        monthlyPatterns.add(
+          HistoricalWeatherPattern(
+            id: 'monthly_${entry.key}_${DateTime.now().millisecondsSinceEpoch}',
+            startDate: monthData.first.dateTime,
+            endDate: monthData.last.dateTime,
+            location: monthData.first.id.split('_')[0],
+            averageTemperature: _calculateAverage(tempData),
+            totalPrecipitation: precipData.reduce((a, b) => a + b),
+            averageHumidity: _calculateAverage(humidityData),
+            season: monthName,
+            patternType: _determinePatternType(monthData),
+            anomalies: _detectAnomalies(monthData),
+            trends: _calculateEnhancedTrends(
+              tempData,
+              humidityData,
+              precipData,
+            ),
+            summary: _generateEnhancedPatternSummary(monthData, monthName),
+          ),
+        );
+      }
+    }
+
+    return monthlyPatterns;
+  }
+
+  String _getMonthName(int month) {
+    const months = [
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
+    ];
+    return months[month - 1];
+  }
+
+  // Enhanced pattern summary with more detailed analysis
+  String _generateEnhancedPatternSummary(List<Weather> data, String period) {
+    if (data.isEmpty) return 'No data available for $period';
+
+    final avgTemp = _calculateAverage(data.map((w) => w.temperature).toList());
+    final totalPrecip = data
+        .map((w) => w.precipitation)
+        .reduce((a, b) => a + b);
+    final avgHumidity = _calculateAverage(data.map((w) => w.humidity).toList());
+    final maxTemp = data
+        .map((w) => w.temperature)
+        .reduce((a, b) => a > b ? a : b);
+    final minTemp = data
+        .map((w) => w.temperature)
+        .reduce((a, b) => a < b ? a : b);
+
+    return '$period: Avg ${avgTemp.toStringAsFixed(1)}°C (${minTemp.toStringAsFixed(1)}-${maxTemp.toStringAsFixed(1)}°C), '
+        'Precip ${totalPrecip.toStringAsFixed(1)}mm, '
+        'Humidity ${avgHumidity.toStringAsFixed(1)}%';
   }
 
   String _generatePatternSummary(List<Weather> data, String season) {
@@ -588,6 +762,31 @@ class AgroPredictionService {
 
   double _calculateEvapotranspiration(double temperature, double humidity) {
     return (temperature * 0.5 - humidity * 0.2).clamp(0.0, 10.0);
+  }
+
+  // Get current season based on date
+  String _getCurrentSeason(DateTime date) {
+    final month = date.month;
+    if (month >= 12 || month <= 2) return 'summer';
+    if (month >= 3 && month <= 5) return 'autumn';
+    if (month >= 6 && month <= 8) return 'winter';
+    return 'spring';
+  }
+
+  // Get daily variation for more realistic predictions
+  Map<String, double> _getDailyVariation(DateTime date, int daysAhead) {
+    final random = Random(date.millisecondsSinceEpoch + daysAhead);
+
+    // Simulate weather fronts and daily patterns
+    final tempVariation = (random.nextDouble() - 0.5) * 6.0; // ±3°C
+    final humidityVariation = (random.nextDouble() - 0.5) * 20.0; // ±10%
+    final precipVariation = random.nextDouble() * 5.0; // 0-5mm
+
+    return {
+      'temperature': tempVariation,
+      'humidity': humidityVariation,
+      'precipitation': precipVariation,
+    };
   }
 
   List<Weather> _generateMockHistoricalData(

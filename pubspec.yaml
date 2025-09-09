@@ -39,6 +39,8 @@ dependencies:
   geocoding: ^2.1.1
   firebase_core: ^2.24.2
   firebase_messaging: ^14.7.10
+  cloud_firestore: ^4.15.8
+  firebase_auth: ^4.16.0
   flutter_local_notifications: ^19.4.1
   permission_handler: ^11.1.0
   shared_preferences: ^2.2.2
