@@ -22,13 +22,13 @@ void main() async {
 
   // Initialize environment configuration
   EnvironmentService.initialize();
-  
+
   // Initialize error handling
   ErrorHandlerService.initialize();
-  
+
   // Initialize offline service
   await OfflineService.initialize();
-  
+
   LoggingService.info('Starting AgriClimatic app');
 
   // Validate configuration
