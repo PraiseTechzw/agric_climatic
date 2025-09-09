@@ -1,12 +1,29 @@
+import 'package:agric_climatic/providers/agro_climatic_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 import 'screens/weather_screen.dart';
+import 'screens/predictions_screen.dart';
+import 'screens/analytics_screen.dart';
 import 'providers/weather_provider.dart';
+import 'providers/notification_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Initialize Firebase (with duplicate check)
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  } catch (e) {
+    // Firebase already initialized, continue
+    print('Firebase already initialized: $e');
+  }
+
+  // Initialize Supabase
   await Supabase.initialize(
     url: 'YOUR_SUPABASE_URL',
     anonKey: 'YOUR_SUPABASE_ANON_KEY',
@@ -23,6 +40,8 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => WeatherProvider()),
+        ChangeNotifierProvider(create: (_) => AgroClimaticProvider()),
+        ChangeNotifierProvider(create: (_) => NotificationProvider()),
       ],
       child: MaterialApp(
         title: 'AgriClimatic',
@@ -74,7 +93,21 @@ class _MainScreenState extends State<MainScreen> {
 
   final List<Widget> _screens = [
     const WeatherScreen(),
+    const PredictionsScreen(),
+    const AnalyticsScreen(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final weatherProvider = context.read<WeatherProvider>();
+      final notificationProvider = context.read<NotificationProvider>();
+
+      weatherProvider.refreshAll();
+      notificationProvider.initialize();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -118,6 +151,16 @@ class _MainScreenState extends State<MainScreen> {
               icon: Icon(Icons.wb_sunny_outlined),
               activeIcon: Icon(Icons.wb_sunny),
               label: 'Weather',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.analytics_outlined),
+              activeIcon: Icon(Icons.analytics),
+              label: 'Predictions',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.trending_up_outlined),
+              activeIcon: Icon(Icons.trending_up),
+              label: 'Analytics',
             ),
           ],
         ),

@@ -1,8 +1,8 @@
+import 'package:agric_climatic/services/agro_climatic_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/weather_provider.dart';
 import '../models/agro_climatic_prediction.dart';
-import '../services/agro_prediction_service.dart';
 import '../widgets/agro_prediction_card.dart';
 
 class PredictionsScreen extends StatefulWidget {
@@ -37,7 +37,7 @@ class _PredictionsScreenState extends State<PredictionsScreen> {
         startDate: DateTime.now(),
         daysAhead: 30,
       );
-      
+
       setState(() {
         _currentPrediction = prediction;
         _isLoading = false;
@@ -136,7 +136,7 @@ class _PredictionsScreenState extends State<PredictionsScreen> {
 
   Widget _buildPredictionContent() {
     final prediction = _currentPrediction!;
-    
+
     return RefreshIndicator(
       onRefresh: _generatePrediction,
       child: SingleChildScrollView(
@@ -146,30 +146,30 @@ class _PredictionsScreenState extends State<PredictionsScreen> {
           children: [
             // Main prediction card
             AgroPredictionCard(prediction: prediction),
-            
+
             const SizedBox(height: 16),
-            
+
             // Crop recommendation
             _buildCropRecommendationCard(prediction),
-            
+
             const SizedBox(height: 16),
-            
+
             // Risk assessment
             _buildRiskAssessmentCard(prediction),
-            
+
             const SizedBox(height: 16),
-            
+
             // Weather alerts
             if (prediction.weatherAlerts.isNotEmpty) ...[
               _buildWeatherAlertsCard(prediction),
               const SizedBox(height: 16),
             ],
-            
+
             // Soil conditions
             _buildSoilConditionsCard(prediction),
-            
+
             const SizedBox(height: 16),
-            
+
             // Climate indicators
             _buildClimateIndicatorsCard(prediction),
           ],
@@ -187,7 +187,8 @@ class _PredictionsScreenState extends State<PredictionsScreen> {
           children: [
             Row(
               children: [
-                Icon(Icons.agriculture, color: Theme.of(context).colorScheme.primary),
+                Icon(Icons.agriculture,
+                    color: Theme.of(context).colorScheme.primary),
                 const SizedBox(width: 8),
                 Text(
                   'Crop Recommendation',
@@ -199,22 +200,23 @@ class _PredictionsScreenState extends State<PredictionsScreen> {
             Text(
               prediction.cropRecommendation.toUpperCase(),
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                color: Theme.of(context).colorScheme.primary,
-                fontWeight: FontWeight.bold,
-              ),
+                    color: Theme.of(context).colorScheme.primary,
+                    fontWeight: FontWeight.bold,
+                  ),
             ),
             const SizedBox(height: 8),
             Text(
               'Expected Yield: ${prediction.yieldPrediction.toStringAsFixed(1)}%',
               style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: prediction.yieldColor,
-                fontWeight: FontWeight.w600,
-              ),
+                    color: prediction.yieldColor,
+                    fontWeight: FontWeight.w600,
+                  ),
             ),
             const SizedBox(height: 12),
             _buildAdviceItem('Planting', prediction.plantingAdvice, Icons.eco),
             const SizedBox(height: 8),
-            _buildAdviceItem('Harvesting', prediction.harvestingAdvice, Icons.harvest),
+            _buildAdviceItem(
+                'Harvesting', prediction.harvestingAdvice, Icons.agriculture),
           ],
         ),
       ),
@@ -286,9 +288,9 @@ class _PredictionsScreenState extends State<PredictionsScreen> {
           Text(
             risk.toUpperCase(),
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              color: color,
-              fontWeight: FontWeight.bold,
-            ),
+                  color: color,
+                  fontWeight: FontWeight.bold,
+                ),
           ),
         ],
       ),
@@ -314,20 +316,21 @@ class _PredictionsScreenState extends State<PredictionsScreen> {
             ),
             const SizedBox(height: 12),
             ...prediction.weatherAlerts.map((alert) => Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Row(
-                children: [
-                  Icon(Icons.warning_amber, color: Colors.red[600], size: 16),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      alert,
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    children: [
+                      Icon(Icons.warning_amber,
+                          color: Colors.red[600], size: 16),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          alert,
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            )),
+                )),
           ],
         ),
       ),
@@ -374,14 +377,16 @@ class _PredictionsScreenState extends State<PredictionsScreen> {
               ],
             ),
             const SizedBox(height: 12),
-            _buildAdviceItem('Irrigation', prediction.irrigationAdvice, Icons.water),
+            _buildAdviceItem(
+                'Irrigation', prediction.irrigationAdvice, Icons.water),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildConditionItem(String label, String value, Color color, IconData icon) {
+  Widget _buildConditionItem(
+      String label, String value, Color color, IconData icon) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -401,9 +406,9 @@ class _PredictionsScreenState extends State<PredictionsScreen> {
           Text(
             value,
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              color: color,
-              fontWeight: FontWeight.bold,
-            ),
+                  color: color,
+                  fontWeight: FontWeight.bold,
+                ),
           ),
         ],
       ),
@@ -428,10 +433,14 @@ class _PredictionsScreenState extends State<PredictionsScreen> {
               ],
             ),
             const SizedBox(height: 12),
-            _buildIndicatorItem('Temperature Trend', prediction.climateIndicators['temperature_trend']),
-            _buildIndicatorItem('Precipitation Trend', prediction.climateIndicators['precipitation_trend']),
-            _buildIndicatorItem('Humidity Trend', prediction.climateIndicators['humidity_trend']),
-            _buildIndicatorItem('Climate Risk Index', '${(prediction.climateIndicators['climate_risk_index'] * 100).toStringAsFixed(1)}%'),
+            _buildIndicatorItem('Temperature Trend',
+                prediction.climateIndicators['temperature_trend']),
+            _buildIndicatorItem('Precipitation Trend',
+                prediction.climateIndicators['precipitation_trend']),
+            _buildIndicatorItem('Humidity Trend',
+                prediction.climateIndicators['humidity_trend']),
+            _buildIndicatorItem('Climate Risk Index',
+                '${(prediction.climateIndicators['climate_risk_index'] * 100).toStringAsFixed(1)}%'),
           ],
         ),
       ),
@@ -457,9 +466,9 @@ class _PredictionsScreenState extends State<PredictionsScreen> {
             child: Text(
               value.toString(),
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Colors.blue[700],
-                fontWeight: FontWeight.w600,
-              ),
+                    color: Colors.blue[700],
+                    fontWeight: FontWeight.w600,
+                  ),
             ),
           ),
         ],
@@ -487,8 +496,8 @@ class _PredictionsScreenState extends State<PredictionsScreen> {
                 Text(
                   title,
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+                        fontWeight: FontWeight.w600,
+                      ),
                 ),
                 const SizedBox(height: 2),
                 Text(

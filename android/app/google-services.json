@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "846124224235",
+    "project_id": "agro-climatic",
+    "storage_bucket": "agro-climatic.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:846124224235:android:37621ded5ef3b24c8938ae",
+        "android_client_info": {
+          "package_name": "com.example.agric_climatic"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCldgKYVa9sPyhmsnOncVGh0R4HrLfrN7I"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
