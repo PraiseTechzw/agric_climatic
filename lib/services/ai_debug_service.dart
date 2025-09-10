@@ -1,9 +1,7 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'logging_service.dart';
 import 'firebase_ai_service.dart';
 import 'environment_service.dart';
-import 'package:firebase_ai/firebase_ai.dart';
 
 /// AI-powered debug service for intelligent troubleshooting and recommendations
 class AIDebugService {
@@ -22,14 +20,21 @@ class AIDebugService {
 
     try {
       LoggingService.info('Initializing AI Debug Service...', tag: 'AI_DEBUG');
-      
+
       // Initialize Firebase AI service
       await FirebaseAIService.instance.initialize();
-      
+
       _isInitialized = true;
-      LoggingService.info('AI Debug Service initialized successfully', tag: 'AI_DEBUG');
+      LoggingService.info(
+        'AI Debug Service initialized successfully',
+        tag: 'AI_DEBUG',
+      );
     } catch (e) {
-      LoggingService.error('Failed to initialize AI Debug Service', tag: 'AI_DEBUG', error: e);
+      LoggingService.error(
+        'Failed to initialize AI Debug Service',
+        tag: 'AI_DEBUG',
+        error: e,
+      );
     }
   }
 
@@ -41,16 +46,16 @@ class AIDebugService {
 
     try {
       LoggingService.info('Analyzing system health...', tag: 'AI_DEBUG');
-      
+
       // Gather system metrics
       final metrics = await _gatherSystemMetrics();
-      
+
       // Analyze with AI
       final analysis = await _performAIHealthAnalysis(metrics);
-      
+
       // Generate recommendations
       final recommendations = await _generateRecommendations(analysis);
-      
+
       final result = {
         'timestamp': DateTime.now().toIso8601String(),
         'system_metrics': metrics,
@@ -59,17 +64,26 @@ class AIDebugService {
         'health_score': _calculateHealthScore(metrics, analysis),
         'critical_issues': _identifyCriticalIssues(analysis),
       };
-      
-      LoggingService.info('System health analysis completed', tag: 'AI_DEBUG', extra: result);
+
+      LoggingService.info(
+        'System health analysis completed',
+        tag: 'AI_DEBUG',
+        extra: result,
+      );
       return result;
     } catch (e) {
-      LoggingService.error('System health analysis failed', tag: 'AI_DEBUG', error: e);
+      LoggingService.error(
+        'System health analysis failed',
+        tag: 'AI_DEBUG',
+        error: e,
+      );
       return _getFallbackHealthAnalysis();
     }
   }
 
   /// Diagnose specific issues with AI assistance
-  Future<Map<String, dynamic>> diagnoseIssue(String issueDescription, {
+  Future<Map<String, dynamic>> diagnoseIssue(
+    String issueDescription, {
     Map<String, dynamic>? context,
   }) async {
     if (!_isInitialized) {
@@ -77,9 +91,13 @@ class AIDebugService {
     }
 
     try {
-      LoggingService.info('Diagnosing issue: $issueDescription', tag: 'AI_DEBUG');
-      
-      final prompt = '''
+      LoggingService.info(
+        'Diagnosing issue: $issueDescription',
+        tag: 'AI_DEBUG',
+      );
+
+      final prompt =
+          '''
 Analyze this agricultural climate app issue and provide a diagnosis:
 
 Issue Description: $issueDescription
@@ -106,17 +124,23 @@ Format as a structured analysis with specific recommendations.
       final response = await _generateMockAIResponse(prompt);
 
       final diagnosis = _parseDiagnosis(response['text'] ?? '');
-      
-      // Store the issue for future reference
-      _reportedIssues.add(DebugIssue(
-        description: issueDescription,
-        context: context ?? {},
-        diagnosis: diagnosis,
-        timestamp: DateTime.now(),
-        resolved: false,
-      ));
 
-      LoggingService.info('Issue diagnosis completed', tag: 'AI_DEBUG', extra: diagnosis);
+      // Store the issue for future reference
+      _reportedIssues.add(
+        DebugIssue(
+          description: issueDescription,
+          context: context ?? {},
+          diagnosis: diagnosis,
+          timestamp: DateTime.now(),
+          resolved: false,
+        ),
+      );
+
+      LoggingService.info(
+        'Issue diagnosis completed',
+        tag: 'AI_DEBUG',
+        extra: diagnosis,
+      );
       return diagnosis;
     } catch (e) {
       LoggingService.error('Issue diagnosis failed', tag: 'AI_DEBUG', error: e);
@@ -131,11 +155,15 @@ Format as a structured analysis with specific recommendations.
     }
 
     try {
-      LoggingService.info('Generating performance recommendations...', tag: 'AI_DEBUG');
-      
+      LoggingService.info(
+        'Generating performance recommendations...',
+        tag: 'AI_DEBUG',
+      );
+
       final metrics = await _gatherSystemMetrics();
-      
-      final prompt = '''
+
+      final prompt =
+          '''
 Analyze these performance metrics for an agricultural climate app and provide optimization recommendations:
 
 Performance Metrics:
@@ -156,12 +184,22 @@ Provide specific, actionable recommendations with priority levels and expected i
       // In a real implementation, you would expose a public method in FirebaseAIService
       final response = await _generateMockAIResponse(prompt);
 
-      final recommendations = _parsePerformanceRecommendations(response.text ?? '');
-      
-      LoggingService.info('Performance recommendations generated', tag: 'AI_DEBUG', extra: recommendations);
+      final recommendations = _parsePerformanceRecommendations(
+        response['text'] ?? '',
+      );
+
+      LoggingService.info(
+        'Performance recommendations generated',
+        tag: 'AI_DEBUG',
+        extra: recommendations,
+      );
       return recommendations;
     } catch (e) {
-      LoggingService.error('Performance recommendations failed', tag: 'AI_DEBUG', error: e);
+      LoggingService.error(
+        'Performance recommendations failed',
+        tag: 'AI_DEBUG',
+        error: e,
+      );
       return _getFallbackPerformanceRecommendations();
     }
   }
@@ -174,10 +212,11 @@ Provide specific, actionable recommendations with priority levels and expected i
 
     try {
       LoggingService.info('Generating test scenarios...', tag: 'AI_DEBUG');
-      
+
       final systemState = await _gatherSystemMetrics();
-      
-      final prompt = '''
+
+      final prompt =
+          '''
 Generate comprehensive test scenarios for an agricultural climate app based on current system state:
 
 System State:
@@ -206,18 +245,27 @@ Format as a structured list of test scenarios.
       // In a real implementation, you would expose a public method in FirebaseAIService
       final response = await _generateMockAIResponse(prompt);
 
-      final scenarios = _parseTestScenarios(response.text ?? '');
-      
-      LoggingService.info('Test scenarios generated', tag: 'AI_DEBUG', extra: {'count': scenarios.length});
+      final scenarios = _parseTestScenarios(response['text'] ?? '');
+
+      LoggingService.info(
+        'Test scenarios generated',
+        tag: 'AI_DEBUG',
+        extra: {'count': scenarios.length},
+      );
       return scenarios;
     } catch (e) {
-      LoggingService.error('Test scenario generation failed', tag: 'AI_DEBUG', error: e);
+      LoggingService.error(
+        'Test scenario generation failed',
+        tag: 'AI_DEBUG',
+        error: e,
+      );
       return _getFallbackTestScenarios();
     }
   }
 
   /// Get AI-powered code review suggestions
-  Future<Map<String, dynamic>> getCodeReviewSuggestions(String codeSnippet, {
+  Future<Map<String, dynamic>> getCodeReviewSuggestions(
+    String codeSnippet, {
     String? filePath,
     String? context,
   }) async {
@@ -226,9 +274,13 @@ Format as a structured list of test scenarios.
     }
 
     try {
-      LoggingService.info('Generating code review suggestions...', tag: 'AI_DEBUG');
-      
-      final prompt = '''
+      LoggingService.info(
+        'Generating code review suggestions...',
+        tag: 'AI_DEBUG',
+      );
+
+      final prompt =
+          '''
 Review this Flutter/Dart code for an agricultural climate app and provide suggestions:
 
 Code:
@@ -255,12 +307,16 @@ Provide specific suggestions with code examples where applicable.
       // In a real implementation, you would expose a public method in FirebaseAIService
       final response = await _generateMockAIResponse(prompt);
 
-      final suggestions = _parseCodeReviewSuggestions(response.text ?? '');
-      
+      final suggestions = _parseCodeReviewSuggestions(response['text'] ?? '');
+
       LoggingService.info('Code review suggestions generated', tag: 'AI_DEBUG');
       return suggestions;
     } catch (e) {
-      LoggingService.error('Code review suggestions failed', tag: 'AI_DEBUG', error: e);
+      LoggingService.error(
+        'Code review suggestions failed',
+        tag: 'AI_DEBUG',
+        error: e,
+      );
       return _getFallbackCodeReviewSuggestions();
     }
   }
@@ -270,7 +326,9 @@ Provide specific suggestions with code examples where applicable.
     return {
       'initialized': _isInitialized,
       'reported_issues_count': _reportedIssues.length,
-      'unresolved_issues_count': _reportedIssues.where((issue) => !issue.resolved).length,
+      'unresolved_issues_count': _reportedIssues
+          .where((issue) => !issue.resolved)
+          .length,
       'last_analysis_time': _systemHealth['last_analysis_time'],
       'health_score': _systemHealth['health_score'],
     };
@@ -279,8 +337,10 @@ Provide specific suggestions with code examples where applicable.
   // Private helper methods
   Future<Map<String, dynamic>> _generateMockAIResponse(String prompt) async {
     // Mock AI response for development
-    await Future.delayed(const Duration(seconds: 1)); // Simulate AI processing time
-    
+    await Future.delayed(
+      const Duration(seconds: 1),
+    ); // Simulate AI processing time
+
     return {
       'text': 'Mock AI response for: ${prompt.substring(0, 50)}...',
       'timestamp': DateTime.now().toIso8601String(),
@@ -292,13 +352,16 @@ Provide specific suggestions with code examples where applicable.
       'environment': EnvironmentService.currentEnvironment.name,
       'debug_mode': EnvironmentService.isDevelopment,
       'api_logging_enabled': EnvironmentService.enableApiLogging,
-      'performance_logging_enabled': EnvironmentService.enablePerformanceLogging,
+      'performance_logging_enabled':
+          EnvironmentService.enablePerformanceLogging,
       'ai_service_stats': FirebaseAIService.instance.getServiceStats(),
       'timestamp': DateTime.now().toIso8601String(),
     };
   }
 
-  Future<Map<String, dynamic>> _performAIHealthAnalysis(Map<String, dynamic> metrics) async {
+  Future<Map<String, dynamic>> _performAIHealthAnalysis(
+    Map<String, dynamic> metrics,
+  ) async {
     // This would typically use AI to analyze the metrics
     // For now, return a basic analysis
     return {
@@ -310,13 +373,16 @@ Provide specific suggestions with code examples where applicable.
     };
   }
 
-  Future<List<Map<String, dynamic>>> _generateRecommendations(Map<String, dynamic> analysis) async {
+  Future<List<Map<String, dynamic>>> _generateRecommendations(
+    Map<String, dynamic> analysis,
+  ) async {
     return [
       {
         'type': 'performance',
         'priority': 'Medium',
         'title': 'Optimize API calls',
-        'description': 'Consider implementing request batching for better performance',
+        'description':
+            'Consider implementing request batching for better performance',
         'impact': 'Medium',
       },
       {
@@ -329,7 +395,10 @@ Provide specific suggestions with code examples where applicable.
     ];
   }
 
-  double _calculateHealthScore(Map<String, dynamic> metrics, Map<String, dynamic> analysis) {
+  double _calculateHealthScore(
+    Map<String, dynamic> metrics,
+    Map<String, dynamic> analysis,
+  ) {
     // Simple health score calculation
     return 85.0; // Out of 100
   }
@@ -421,7 +490,8 @@ Provide specific suggestions with code examples where applicable.
           'severity': 'High',
           'suggestion': 'Add try-catch blocks for API calls',
           'line': 42,
-          'code_example': 'try { await apiCall(); } catch (e) { handleError(e); }',
+          'code_example':
+              'try { await apiCall(); } catch (e) { handleError(e); }',
         },
       ],
       'ai_confidence': 0.75,

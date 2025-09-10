@@ -214,9 +214,17 @@ class LoggingService {
     }
 
     if (error != null) {
-      error('AI operation failed: $operation', tag: 'AI', extra: extra);
+      LoggingService.error(
+        'AI operation failed: $operation',
+        tag: 'AI',
+        extra: extra,
+      );
     } else {
-      info('AI operation completed: $operation', tag: 'AI', extra: extra);
+      LoggingService.info(
+        'AI operation completed: $operation',
+        tag: 'AI',
+        extra: extra,
+      );
     }
   }
 

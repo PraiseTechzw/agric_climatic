@@ -464,3 +464,4 @@ LEFT JOIN LATERAL (
 WHERE ar.is_active = true
 ORDER BY ar.priority DESC, ar.created_at DESC;
 
+

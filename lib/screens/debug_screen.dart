@@ -30,28 +30,41 @@ class _DebugScreenState extends State<DebugScreen> {
 
     try {
       LoggingService.info('Initializing debug screen...', tag: 'DEBUG');
-      
+
       // Initialize performance service
       await PerformanceService.initialize();
-      
+
       // Initialize AI service
       try {
         await FirebaseAIService.instance.initialize();
-        LoggingService.info('AI service initialized successfully', tag: 'DEBUG');
+        LoggingService.info(
+          'AI service initialized successfully',
+          tag: 'DEBUG',
+        );
       } catch (e) {
-        LoggingService.warning('AI service initialization failed: $e', tag: 'DEBUG');
+        LoggingService.warning(
+          'AI service initialization failed: $e',
+          tag: 'DEBUG',
+        );
       }
 
       // Gather system information
       _gatherSystemInfo();
-      
+
       setState(() {
         _isInitialized = true;
       });
-      
-      LoggingService.info('Debug screen initialized successfully', tag: 'DEBUG');
+
+      LoggingService.info(
+        'Debug screen initialized successfully',
+        tag: 'DEBUG',
+      );
     } catch (e) {
-      LoggingService.error('Failed to initialize debug screen', tag: 'DEBUG', error: e);
+      LoggingService.error(
+        'Failed to initialize debug screen',
+        tag: 'DEBUG',
+        error: e,
+      );
     }
   }
 
@@ -63,9 +76,12 @@ class _DebugScreenState extends State<DebugScreen> {
         'environment': EnvironmentService.currentEnvironment.name,
         'debug_mode': EnvironmentService.isDevelopment,
         'api_logging_enabled': EnvironmentService.enableApiLogging,
-        'performance_logging_enabled': EnvironmentService.enablePerformanceLogging,
-        'zimbabwe_features_enabled': EnvironmentService.enableZimbabweWeatherData,
-        'ai_service_initialized': FirebaseAIService.instance.getServiceStats()['initialized'],
+        'performance_logging_enabled':
+            EnvironmentService.enablePerformanceLogging,
+        'zimbabwe_features_enabled':
+            EnvironmentService.enableZimbabweWeatherData,
+        'ai_service_initialized': FirebaseAIService.instance
+            .getServiceStats()['initialized'],
         'timestamp': DateTime.now().toIso8601String(),
       };
     });
@@ -75,9 +91,7 @@ class _DebugScreenState extends State<DebugScreen> {
   Widget build(BuildContext context) {
     if (!EnvironmentService.enableDebugMenu) {
       return Scaffold(
-        appBar: AppBar(
-          title: const Text('Debug Console'),
-        ),
+        appBar: AppBar(title: const Text('Debug Console')),
         body: const Center(
           child: Text(
             'Debug console is only available in development mode',
@@ -160,16 +174,13 @@ class _DebugScreenState extends State<DebugScreen> {
           children: [
             Row(
               children: [
-                Icon(
-                  Icons.info_outline,
-                  color: Theme.of(context).primaryColor,
-                ),
+                Icon(Icons.info_outline, color: Theme.of(context).primaryColor),
                 const SizedBox(width: 8),
                 Text(
                   'System Information',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                 ),
               ],
             ),
@@ -211,16 +222,13 @@ class _DebugScreenState extends State<DebugScreen> {
           children: [
             Row(
               children: [
-                Icon(
-                  Icons.api,
-                  color: Theme.of(context).primaryColor,
-                ),
+                Icon(Icons.api, color: Theme.of(context).primaryColor),
                 const SizedBox(width: 8),
                 Text(
                   'API Test Results',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 const Spacer(),
                 ElevatedButton(
@@ -251,12 +259,14 @@ class _DebugScreenState extends State<DebugScreen> {
   Widget _buildApiTestResult(String apiName, Map<String, dynamic> result) {
     final isSuccess = result['status'] == 'success';
     final responseTime = result['response_time_ms'] ?? 0;
-    
+
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: isSuccess ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
+        color: isSuccess
+            ? Colors.green.withOpacity(0.1)
+            : Colors.red.withOpacity(0.1),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
           color: isSuccess ? Colors.green : Colors.red,
@@ -289,10 +299,7 @@ class _DebugScreenState extends State<DebugScreen> {
             const SizedBox(height: 4),
             Text(
               'Error: ${result['error']}',
-              style: const TextStyle(
-                color: Colors.red,
-                fontSize: 12,
-              ),
+              style: const TextStyle(color: Colors.red, fontSize: 12),
             ),
           ],
         ],
@@ -309,16 +316,13 @@ class _DebugScreenState extends State<DebugScreen> {
           children: [
             Row(
               children: [
-                Icon(
-                  Icons.terminal,
-                  color: Theme.of(context).primaryColor,
-                ),
+                Icon(Icons.terminal, color: Theme.of(context).primaryColor),
                 const SizedBox(width: 8),
                 Text(
                   'Debug Console',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                 ),
               ],
             ),
@@ -339,16 +343,13 @@ class _DebugScreenState extends State<DebugScreen> {
           children: [
             Row(
               children: [
-                Icon(
-                  Icons.flash_on,
-                  color: Theme.of(context).primaryColor,
-                ),
+                Icon(Icons.flash_on, color: Theme.of(context).primaryColor),
                 const SizedBox(width: 8),
                 Text(
                   'Quick Actions',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                 ),
               ],
             ),
@@ -424,7 +425,7 @@ class _DebugScreenState extends State<DebugScreen> {
     setState(() {
       _isInitialized = false;
     });
-    
+
     await _initializeDebugScreen();
   }
 
@@ -436,16 +437,16 @@ class _DebugScreenState extends State<DebugScreen> {
 
     try {
       LoggingService.info('Starting API tests...', tag: 'DEBUG');
-      
+
       // Test Weather API
       await _testWeatherApi();
-      
+
       // Test Soil API
       await _testSoilApi();
-      
+
       // Test AI Service
       await _testAiService();
-      
+
       LoggingService.info('All API tests completed', tag: 'DEBUG');
     } catch (e) {
       LoggingService.error('API testing failed', tag: 'DEBUG', error: e);
@@ -458,11 +459,11 @@ class _DebugScreenState extends State<DebugScreen> {
 
   Future<void> _testWeatherApi() async {
     final stopwatch = Stopwatch()..start();
-    
+
     try {
       await ZimbabweApiService.getCurrentWeather('Harare');
       stopwatch.stop();
-      
+
       setState(() {
         _apiTestResults['weather'] = {
           'status': 'success',
@@ -470,11 +471,11 @@ class _DebugScreenState extends State<DebugScreen> {
           'timestamp': DateTime.now().toIso8601String(),
         };
       });
-      
+
       LoggingService.info('Weather API test successful', tag: 'DEBUG');
     } catch (e) {
       stopwatch.stop();
-      
+
       setState(() {
         _apiTestResults['weather'] = {
           'status': 'error',
@@ -483,18 +484,18 @@ class _DebugScreenState extends State<DebugScreen> {
           'timestamp': DateTime.now().toIso8601String(),
         };
       });
-      
+
       LoggingService.error('Weather API test failed', tag: 'DEBUG', error: e);
     }
   }
 
   Future<void> _testSoilApi() async {
     final stopwatch = Stopwatch()..start();
-    
+
     try {
       await ZimbabweApiService.getZimbabweSoilData('Harare');
       stopwatch.stop();
-      
+
       setState(() {
         _apiTestResults['soil'] = {
           'status': 'success',
@@ -502,11 +503,11 @@ class _DebugScreenState extends State<DebugScreen> {
           'timestamp': DateTime.now().toIso8601String(),
         };
       });
-      
+
       LoggingService.info('Soil API test successful', tag: 'DEBUG');
     } catch (e) {
       stopwatch.stop();
-      
+
       setState(() {
         _apiTestResults['soil'] = {
           'status': 'error',
@@ -515,18 +516,18 @@ class _DebugScreenState extends State<DebugScreen> {
           'timestamp': DateTime.now().toIso8601String(),
         };
       });
-      
+
       LoggingService.error('Soil API test failed', tag: 'DEBUG', error: e);
     }
   }
 
   Future<void> _testAiService() async {
     final stopwatch = Stopwatch()..start();
-    
+
     try {
       final result = await FirebaseAIService.instance.testService();
       stopwatch.stop();
-      
+
       setState(() {
         _apiTestResults['ai'] = {
           'status': result['status'],
@@ -535,11 +536,11 @@ class _DebugScreenState extends State<DebugScreen> {
           'timestamp': DateTime.now().toIso8601String(),
         };
       });
-      
+
       LoggingService.info('AI service test successful', tag: 'DEBUG');
     } catch (e) {
       stopwatch.stop();
-      
+
       setState(() {
         _apiTestResults['ai'] = {
           'status': 'error',
@@ -548,7 +549,7 @@ class _DebugScreenState extends State<DebugScreen> {
           'timestamp': DateTime.now().toIso8601String(),
         };
       });
-      
+
       LoggingService.error('AI service test failed', tag: 'DEBUG', error: e);
     }
   }
@@ -569,7 +570,7 @@ class _DebugScreenState extends State<DebugScreen> {
 
   Future<void> _runAllTests() async {
     await _testAllApis();
-    
+
     // Show completion dialog
     if (mounted) {
       showDialog(
@@ -594,7 +595,7 @@ class _DebugScreenState extends State<DebugScreen> {
 
   void _clearAllLogs() {
     LoggingService.clearLogs();
-    
+
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('All logs cleared'),
@@ -653,16 +654,18 @@ class _DebugScreenState extends State<DebugScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Debug Settings'),
-        content: const Column(
+        content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Debug settings are configured in EnvironmentService.'),
-            SizedBox(height: 16),
+            const Text('Debug settings are configured in EnvironmentService.'),
+            const SizedBox(height: 16),
             const Text('Current settings:'),
             Text('• Debug Menu: ${EnvironmentService.enableDebugMenu}'),
             Text('• API Logging: ${EnvironmentService.enableApiLogging}'),
-            Text('• Performance Logging: ${EnvironmentService.enablePerformanceLogging}'),
+            Text(
+              '• Performance Logging: ${EnvironmentService.enablePerformanceLogging}',
+            ),
           ],
         ),
         actions: [

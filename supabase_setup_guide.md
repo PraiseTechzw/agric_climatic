@@ -142,3 +142,4 @@ If you encounter any issues:
 
 The database is now ready to support your Agricultural Climate App with comprehensive weather, agricultural, and user data management capabilities!
 
+

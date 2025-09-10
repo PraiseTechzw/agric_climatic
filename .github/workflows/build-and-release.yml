@@ -1,0 +1,94 @@
+name: Build and Release APK
+
+on:
+  push:
+    tags:
+      - 'v*'  # Trigger on version tags like v1.0.0
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'zulu'
+        java-version: '17'
+        
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.24.0'
+        channel: 'stable'
+        cache: true
+        
+    - name: Get dependencies
+      run: flutter pub get
+      
+    - name: Run tests
+      run: flutter test
+      
+    - name: Build APK
+      run: flutter build apk --release --split-per-abi
+      
+    - name: Build App Bundle (AAB)
+      run: flutter build appbundle --release
+      
+    - name: Generate version info
+      id: version
+      run: |
+        # Extract version from pubspec.yaml
+        VERSION=$(grep 'version:' pubspec.yaml | sed 's/version: //')
+        echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+        echo "TAG_NAME=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        
+    - name: Upload APK artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: apk-files
+        path: |
+          build/app/outputs/flutter-apk/*.apk
+          build/app/outputs/bundle/release/*.aab
+        retention-days: 30
+        
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ steps.version.outputs.TAG_NAME }}
+        name: Release ${{ steps.version.outputs.TAG_NAME }}
+        body: |
+          ## AgriClimatic App Release ${{ steps.version.outputs.TAG_NAME }}
+          
+          ### What's New
+          - Agricultural climate prediction and analysis
+          - SMS and push notifications
+          - Zimbabwe-specific weather data
+          
+          ### Downloads
+          - **APK Files**: Download the APK files below for Android devices
+          - **App Bundle (AAB)**: For Google Play Store distribution
+          
+          ### Installation
+          1. Download the appropriate APK for your device architecture
+          2. Enable "Install from unknown sources" in your Android settings
+          3. Install the APK file
+          
+          ### Supported Architectures
+          - ARM64 (arm64-v8a) - Most modern devices
+          - ARM (armeabi-v7a) - Older devices
+          - x86_64 - Emulators and some tablets
+          
+          ---
+          *Built with Flutter and powered by Firebase & Supabase*
+        files: |
+          build/app/outputs/flutter-apk/*.apk
+          build/app/outputs/bundle/release/*.aab
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
