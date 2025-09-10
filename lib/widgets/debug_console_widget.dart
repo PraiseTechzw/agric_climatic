@@ -626,7 +626,7 @@ class _DebugConsoleWidgetState extends State<DebugConsoleWidget>
                 ),
                 ElevatedButton.icon(
                   onPressed: _generateTestScenarios,
-                  icon: const Icon(Icons.test_tube, size: 16),
+                  icon: const Icon(Icons.science, size: 16),
                   label: const Text('Generate Tests'),
                 ),
               ],
