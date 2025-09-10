@@ -3,6 +3,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:timezone/timezone.dart' as tz;
+import 'package:twilio_flutter/twilio_flutter.dart';
 import 'logging_service.dart';
 
 class NotificationService {
@@ -10,6 +11,7 @@ class NotificationService {
       FlutterLocalNotificationsPlugin();
   static final FirebaseMessaging _firebaseMessaging =
       FirebaseMessaging.instance;
+  static TwilioFlutter? _twilioFlutter;
   static bool _isInitialized = false;
 
   // Notification channels
@@ -29,6 +31,13 @@ class NotificationService {
 
       // Request permissions
       await _requestPermissions();
+
+      // Initialize Twilio (you'll need to add your credentials)
+      _twilioFlutter = TwilioFlutter(
+        accountSid: 'YOUR_TWILIO_ACCOUNT_SID', // Replace with your Twilio Account SID
+        authToken: 'YOUR_TWILIO_AUTH_TOKEN',   // Replace with your Twilio Auth Token
+        twilioNumber: 'YOUR_TWILIO_PHONE_NUMBER', // Replace with your Twilio phone number
+      );
 
       _isInitialized = true;
       LoggingService.info('Notification service initialized');
@@ -321,28 +330,37 @@ class NotificationService {
     );
   }
 
-  // Send SMS
-  static Future<void> _sendSMS({required String message}) async {
+  // Send SMS using Twilio
+  static Future<void> _sendSMS({required String message, String? phoneNumber}) async {
     try {
-      // Check if SMS permission is granted
-      final smsStatus = await Permission.sms.status;
-      if (!smsStatus.isGranted) {
-        LoggingService.warning('SMS permission not granted, skipping SMS');
+      if (_twilioFlutter == null) {
+        LoggingService.warning('Twilio not initialized, skipping SMS');
         return;
       }
 
-      // For now, we'll use the SMS app to send the message
-      // In a production app, you would integrate with an SMS service provider
-      final uri = Uri(scheme: 'sms', queryParameters: {'body': message});
-
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri);
-        LoggingService.info('SMS launched successfully');
-      } else {
-        LoggingService.warning('Could not launch SMS app');
-      }
+      // Use a default phone number if none provided
+      final recipientNumber = phoneNumber ?? '+263XXXXXXXXX'; // Replace with default Zimbabwe number
+      
+      // Send SMS using Twilio
+      await _twilioFlutter!.sendSMS(
+        toNumber: recipientNumber,
+        messageBody: message,
+      );
+      
+      LoggingService.info('SMS sent successfully via Twilio');
     } catch (e) {
-      LoggingService.error('Failed to send SMS', error: e);
+      LoggingService.error('Failed to send SMS via Twilio', error: e);
+      
+      // Fallback to SMS app if Twilio fails
+      try {
+        final uri = Uri(scheme: 'sms', queryParameters: {'body': message});
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri);
+          LoggingService.info('SMS launched via SMS app as fallback');
+        }
+      } catch (fallbackError) {
+        LoggingService.error('SMS fallback also failed', error: fallbackError);
+      }
     }
   }
 

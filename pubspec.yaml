@@ -47,7 +47,7 @@ dependencies:
   intl: ^0.20.2
   firebase_ai: ^3.2.0
   connectivity_plus: ^6.0.5
-  sms_advanced: ^1.1.0
+  twilio_flutter: ^0.9.0
   url_launcher: ^6.3.2
   timezone: ^0.10.1
 
