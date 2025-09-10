@@ -1,12 +1,8 @@
+import 'package:agric_climatic/main.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../services/app_icon_service.dart';
 import '../services/logging_service.dart';
 import '../services/environment_service.dart';
-import '../providers/weather_provider.dart';
-import '../providers/agro_climatic_provider.dart';
-import '../providers/notification_provider.dart';
-import 'main_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -20,7 +16,7 @@ class _SplashScreenState extends State<SplashScreen>
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<double> _scaleAnimation;
-  
+
   String _statusMessage = 'Initializing...';
   bool _isInitialized = false;
   bool _hasError = false;
@@ -38,21 +34,13 @@ class _SplashScreenState extends State<SplashScreen>
       vsync: this,
     );
 
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeInOut,
-    ));
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+    );
 
-    _scaleAnimation = Tween<double>(
-      begin: 0.8,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.elasticOut,
-    ));
+    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.elasticOut),
+    );
 
     _animationController.forward();
   }
@@ -60,56 +48,54 @@ class _SplashScreenState extends State<SplashScreen>
   Future<void> _initializeApp() async {
     try {
       LoggingService.info('Starting app initialization');
-      
+
       // Update status message
       setState(() {
         _statusMessage = 'Loading configuration...';
       });
-      
+
       // Wait a bit for the animation to start
       await Future.delayed(const Duration(milliseconds: 500));
-      
+
       // Update status message
       setState(() {
         _statusMessage = 'Connecting to services...';
       });
-      
+
       // Wait a bit more
       await Future.delayed(const Duration(milliseconds: 500));
-      
+
       // Update status message
       setState(() {
         _statusMessage = 'Loading data...';
       });
-      
+
       // Wait a bit more
       await Future.delayed(const Duration(milliseconds: 500));
-      
+
       // Update status message
       setState(() {
         _statusMessage = 'Almost ready...';
       });
-      
+
       // Wait a bit more
       await Future.delayed(const Duration(milliseconds: 500));
-      
+
       // Mark as initialized
       setState(() {
         _isInitialized = true;
         _statusMessage = 'Ready!';
       });
-      
+
       LoggingService.info('App initialization completed');
-      
+
       // Wait a bit before navigating
       await Future.delayed(const Duration(milliseconds: 500));
-      
+
       // Navigate to main screen
       if (mounted) {
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (context) => const MainScreen(),
-          ),
+          MaterialPageRoute(builder: (context) => const MainScreen()),
         );
       }
     } catch (e) {
@@ -136,9 +122,9 @@ class _SplashScreenState extends State<SplashScreen>
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              AppIconService._backgroundColor,
-              AppIconService._backgroundColor.withOpacity(0.8),
-              AppIconService._primaryColor.withOpacity(0.1),
+              AppIconService.backgroundColor,
+              AppIconService.backgroundColor.withOpacity(0.8),
+              AppIconService.primaryColor.withOpacity(0.1),
             ],
           ),
         ),
@@ -160,9 +146,9 @@ class _SplashScreenState extends State<SplashScreen>
                     );
                   },
                 ),
-                
+
                 const SizedBox(height: 32),
-                
+
                 // App name with animation
                 AnimatedBuilder(
                   animation: _animationController,
@@ -174,15 +160,15 @@ class _SplashScreenState extends State<SplashScreen>
                         style: TextStyle(
                           fontSize: 32,
                           fontWeight: FontWeight.bold,
-                          color: AppIconService._primaryColor,
+                          color: AppIconService.primaryColor,
                         ),
                       ),
                     );
                   },
                 ),
-                
+
                 const SizedBox(height: 8),
-                
+
                 // App description with animation
                 AnimatedBuilder(
                   animation: _animationController,
@@ -193,16 +179,16 @@ class _SplashScreenState extends State<SplashScreen>
                         'Zimbabwe Agricultural Climate Prediction',
                         style: TextStyle(
                           fontSize: 16,
-                          color: AppIconService._primaryColor.withOpacity(0.8),
+                          color: AppIconService.primaryColor.withOpacity(0.8),
                         ),
                         textAlign: TextAlign.center,
                       ),
                     );
                   },
                 ),
-                
+
                 const SizedBox(height: 48),
-                
+
                 // Status message with animation
                 AnimatedBuilder(
                   animation: _animationController,
@@ -218,16 +204,18 @@ class _SplashScreenState extends State<SplashScreen>
                           else
                             AppIconService.getLoadingIndicator(
                               message: _statusMessage,
-                              color: AppIconService._primaryColor,
+                              color: AppIconService.primaryColor,
                             ),
-                          
+
                           const SizedBox(height: 16),
-                          
+
                           Text(
                             _statusMessage,
                             style: TextStyle(
                               fontSize: 14,
-                              color: AppIconService._primaryColor.withOpacity(0.8),
+                              color: AppIconService.primaryColor.withOpacity(
+                                0.8,
+                              ),
                             ),
                             textAlign: TextAlign.center,
                           ),
@@ -236,9 +224,9 @@ class _SplashScreenState extends State<SplashScreen>
                     );
                   },
                 ),
-                
+
                 const SizedBox(height: 32),
-                
+
                 // Version info
                 AnimatedBuilder(
                   animation: _animationController,
@@ -249,15 +237,15 @@ class _SplashScreenState extends State<SplashScreen>
                         'Version ${EnvironmentService.appVersion} (${EnvironmentService.appBuildNumber})',
                         style: TextStyle(
                           fontSize: 12,
-                          color: AppIconService._primaryColor.withOpacity(0.6),
+                          color: AppIconService.primaryColor.withOpacity(0.6),
                         ),
                       ),
                     );
                   },
                 ),
-                
+
                 const SizedBox(height: 16),
-                
+
                 // Environment info (debug only)
                 if (EnvironmentService.isDevelopment)
                   AnimatedBuilder(
@@ -271,17 +259,21 @@ class _SplashScreenState extends State<SplashScreen>
                             vertical: 6,
                           ),
                           decoration: BoxDecoration(
-                            color: AppIconService._primaryColor.withOpacity(0.1),
+                            color: AppIconService.primaryColor.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                              color: AppIconService._primaryColor.withOpacity(0.3),
+                              color: AppIconService.primaryColor.withOpacity(
+                                0.3,
+                              ),
                             ),
                           ),
                           child: Text(
                             'Development Mode',
                             style: TextStyle(
                               fontSize: 10,
-                              color: AppIconService._primaryColor.withOpacity(0.8),
+                              color: AppIconService.primaryColor.withOpacity(
+                                0.8,
+                              ),
                               fontWeight: FontWeight.w500,
                             ),
                           ),

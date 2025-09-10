@@ -9,7 +9,6 @@ import '../services/firebase_ai_service.dart';
 
 class AgroPredictionService {
   final SupabaseClient _supabase = Supabase.instance.client;
-  final NotificationService _notificationService = NotificationService();
   final FirebaseAIService _aiService = FirebaseAIService.instance;
 
   // Zimbabwe crop data and climate zones
@@ -567,7 +566,7 @@ class AgroPredictionService {
           icon: 'warning',
           type: 'weather',
         );
-        await _notificationService.sendWeatherAlert(
+        await NotificationService.sendWeatherAlert(
           title: weatherAlert.title,
           message: weatherAlert.description,
           severity: weatherAlert.severity,

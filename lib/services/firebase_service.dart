@@ -1,4 +1,4 @@
- import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/weather.dart';
 import '../models/soil_data.dart';
@@ -287,11 +287,8 @@ class FirebaseService {
         .limit(limit)
         .snapshots()
         .map(
-          (snapshot) => snapshot.docs
-              .map(
-                (doc) => Weather.fromJson(doc.data() as Map<String, dynamic>),
-              )
-              .toList(),
+          (snapshot) =>
+              snapshot.docs.map((doc) => Weather.fromJson(doc.data())).toList(),
         );
   }
 
@@ -307,9 +304,7 @@ class FirebaseService {
         .snapshots()
         .map(
           (snapshot) => snapshot.docs
-              .map(
-                (doc) => {'id': doc.id, ...doc.data() as Map<String, dynamic>},
-              )
+              .map((doc) => {'id': doc.id, ...doc.data()})
               .toList(),
         );
   }

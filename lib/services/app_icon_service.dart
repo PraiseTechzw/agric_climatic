@@ -3,23 +3,14 @@ import 'package:flutter/services.dart';
 import 'logging_service.dart';
 
 class AppIconService {
-  static const String _appIconPath = 'assets/icons/app_icon.png';
-  static const String _splashIconPath = 'assets/icons/splash_icon.png';
-  
-  // App icon configuration
-  static const double _appIconSize = 1024.0;
-  static const double _splashIconSize = 200.0;
-  
   // Color scheme for the app
-  static const Color _primaryColor = Color(0xFF2E7D32);
-  static const Color _secondaryColor = Color(0xFF4CAF50);
-  static const Color _accentColor = Color(0xFF8BC34A);
-  static const Color _backgroundColor = Color(0xFFF1F8E9);
-  
+  static const Color primaryColor = Color(0xFF2E7D32);
+  static const Color backgroundColor = Color(0xFFF1F8E9);
+
   static void initialize() {
     LoggingService.info('App icon service initialized');
   }
-  
+
   // Get app icon widget
   static Widget getAppIcon({
     double size = 64.0,
@@ -31,7 +22,7 @@ class AppIconService {
       height: size,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: color ?? _primaryColor,
+        color: color ?? primaryColor,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.2),
@@ -40,25 +31,18 @@ class AppIconService {
           ),
         ],
       ),
-      child: Icon(
-        Icons.agriculture,
-        size: size * 0.6,
-        color: Colors.white,
-      ),
+      child: Icon(Icons.agriculture, size: size * 0.6, color: Colors.white),
     );
   }
-  
+
   // Get splash screen icon
-  static Widget getSplashIcon({
-    double size = 120.0,
-    Color? color,
-  }) {
+  static Widget getSplashIcon({double size = 120.0, Color? color}) {
     return Container(
       width: size,
       height: size,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: color ?? _primaryColor,
+        color: color ?? primaryColor,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.3),
@@ -67,14 +51,10 @@ class AppIconService {
           ),
         ],
       ),
-      child: Icon(
-        Icons.agriculture,
-        size: size * 0.6,
-        color: Colors.white,
-      ),
+      child: Icon(Icons.agriculture, size: size * 0.6, color: Colors.white),
     );
   }
-  
+
   // Get app logo with text
   static Widget getAppLogo({
     double iconSize = 48.0,
@@ -93,21 +73,18 @@ class AppIconService {
             style: TextStyle(
               fontSize: textSize,
               fontWeight: FontWeight.bold,
-              color: color ?? _primaryColor,
+              color: color ?? primaryColor,
             ),
           ),
         ],
       ],
     );
   }
-  
+
   // Get splash screen widget
-  static Widget getSplashScreen({
-    String? message,
-    Widget? child,
-  }) {
+  static Widget getSplashScreen({String? message, Widget? child}) {
     return Scaffold(
-      backgroundColor: _backgroundColor,
+      backgroundColor: backgroundColor,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -119,7 +96,7 @@ class AppIconService {
               style: TextStyle(
                 fontSize: 32,
                 fontWeight: FontWeight.bold,
-                color: _primaryColor,
+                color: primaryColor,
               ),
             ),
             const SizedBox(height: 8),
@@ -127,7 +104,7 @@ class AppIconService {
               'Zimbabwe Agricultural Climate Prediction',
               style: TextStyle(
                 fontSize: 16,
-                color: _primaryColor.withOpacity(0.8),
+                color: primaryColor.withOpacity(0.8),
               ),
               textAlign: TextAlign.center,
             ),
@@ -137,52 +114,40 @@ class AppIconService {
                 message,
                 style: TextStyle(
                   fontSize: 14,
-                  color: _primaryColor.withOpacity(0.6),
+                  color: primaryColor.withOpacity(0.6),
                 ),
                 textAlign: TextAlign.center,
               ),
             ],
-            if (child != null) ...[
-              const SizedBox(height: 32),
-              child,
-            ],
+            if (child != null) ...[const SizedBox(height: 32), child],
           ],
         ),
       ),
     );
   }
-  
+
   // Get loading indicator
-  static Widget getLoadingIndicator({
-    String? message,
-    Color? color,
-  }) {
+  static Widget getLoadingIndicator({String? message, Color? color}) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation<Color>(color ?? _primaryColor),
+          valueColor: AlwaysStoppedAnimation<Color>(color ?? primaryColor),
         ),
         if (message != null) ...[
           const SizedBox(height: 16),
           Text(
             message,
-            style: TextStyle(
-              fontSize: 14,
-              color: color ?? _primaryColor,
-            ),
+            style: TextStyle(fontSize: 14, color: color ?? primaryColor),
             textAlign: TextAlign.center,
           ),
         ],
       ],
     );
   }
-  
+
   // Get error icon
-  static Widget getErrorIcon({
-    double size = 64.0,
-    Color? color,
-  }) {
+  static Widget getErrorIcon({double size = 64.0, Color? color}) {
     return Container(
       width: size,
       height: size,
@@ -197,19 +162,12 @@ class AppIconService {
           ),
         ],
       ),
-      child: Icon(
-        Icons.error_outline,
-        size: size * 0.6,
-        color: Colors.white,
-      ),
+      child: Icon(Icons.error_outline, size: size * 0.6, color: Colors.white),
     );
   }
-  
+
   // Get success icon
-  static Widget getSuccessIcon({
-    double size = 64.0,
-    Color? color,
-  }) {
+  static Widget getSuccessIcon({double size = 64.0, Color? color}) {
     return Container(
       width: size,
       height: size,
@@ -231,12 +189,9 @@ class AppIconService {
       ),
     );
   }
-  
+
   // Get warning icon
-  static Widget getWarningIcon({
-    double size = 64.0,
-    Color? color,
-  }) {
+  static Widget getWarningIcon({double size = 64.0, Color? color}) {
     return Container(
       width: size,
       height: size,
@@ -258,12 +213,9 @@ class AppIconService {
       ),
     );
   }
-  
+
   // Get info icon
-  static Widget getInfoIcon({
-    double size = 64.0,
-    Color? color,
-  }) {
+  static Widget getInfoIcon({double size = 64.0, Color? color}) {
     return Container(
       width: size,
       height: size,
@@ -278,14 +230,10 @@ class AppIconService {
           ),
         ],
       ),
-      child: Icon(
-        Icons.info_outline,
-        size: size * 0.6,
-        color: Colors.white,
-      ),
+      child: Icon(Icons.info_outline, size: size * 0.6, color: Colors.white),
     );
   }
-  
+
   // Get feature icon based on type
   static Widget getFeatureIcon(
     String feature, {
@@ -293,7 +241,7 @@ class AppIconService {
     Color? color,
   }) {
     IconData iconData;
-    
+
     switch (feature.toLowerCase()) {
       case 'weather':
         iconData = Icons.wb_sunny;
@@ -326,43 +274,24 @@ class AppIconService {
       default:
         iconData = Icons.agriculture;
     }
-    
-    return Icon(
-      iconData,
-      size: size,
-      color: color ?? _primaryColor,
-    );
+
+    return Icon(iconData, size: size, color: color ?? primaryColor);
   }
-  
+
   // Get status icon based on status
-  static Widget getStatusIcon(
-    String status, {
-    double size = 24.0,
-  }) {
+  static Widget getStatusIcon(String status, {double size = 24.0}) {
     switch (status.toLowerCase()) {
       case 'success':
       case 'completed':
       case 'active':
-        return Icon(
-          Icons.check_circle,
-          size: size,
-          color: Colors.green,
-        );
+        return Icon(Icons.check_circle, size: size, color: Colors.green);
       case 'error':
       case 'failed':
       case 'inactive':
-        return Icon(
-          Icons.error,
-          size: size,
-          color: Colors.red,
-        );
+        return Icon(Icons.error, size: size, color: Colors.red);
       case 'warning':
       case 'pending':
-        return Icon(
-          Icons.warning,
-          size: size,
-          color: Colors.orange,
-        );
+        return Icon(Icons.warning, size: size, color: Colors.orange);
       case 'loading':
       case 'processing':
         return SizedBox(
@@ -370,30 +299,26 @@ class AppIconService {
           height: size,
           child: CircularProgressIndicator(
             strokeWidth: 2,
-            valueColor: AlwaysStoppedAnimation<Color>(_primaryColor),
+            valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
           ),
         );
       default:
-        return Icon(
-          Icons.info,
-          size: size,
-          color: Colors.grey,
-        );
+        return Icon(Icons.info, size: size, color: Colors.grey);
     }
   }
-  
+
   // Get color scheme
   static ColorScheme getColorScheme() {
     return ColorScheme.fromSeed(
-      seedColor: _primaryColor,
+      seedColor: primaryColor,
       brightness: Brightness.light,
     );
   }
-  
+
   // Get dark color scheme
   static ColorScheme getDarkColorScheme() {
     return ColorScheme.fromSeed(
-      seedColor: _primaryColor,
+      seedColor: primaryColor,
       brightness: Brightness.dark,
     );
   }

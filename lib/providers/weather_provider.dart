@@ -14,7 +14,6 @@ import '../services/offline_storage_service.dart';
 class WeatherProvider extends ChangeNotifier {
   final WeatherService _weatherService = WeatherService();
   final AgroPredictionService _predictionService = AgroPredictionService();
-  final NotificationService _notificationService = NotificationService();
   final LocationService _locationService = LocationService();
 
   Weather? _currentWeather;
@@ -175,7 +174,7 @@ class WeatherProvider extends ChangeNotifier {
   }
 
   Future<void> initializeNotifications() async {
-    await _notificationService.initialize();
+    await NotificationService.initialize();
   }
 
   Future<void> refreshAll() async {

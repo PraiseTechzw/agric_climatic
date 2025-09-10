@@ -7,7 +7,6 @@ import '../services/notification_service.dart';
 
 class AgroPredictionService {
   final SupabaseClient _supabase = Supabase.instance.client;
-  final NotificationService _notificationService = NotificationService();
 
   // Zimbabwe crop data and climate zones
   final Map<String, Map<String, dynamic>> _cropData = {
@@ -425,7 +424,7 @@ class AgroPredictionService {
           icon: 'warning',
           type: 'weather',
         );
-        await _notificationService.sendWeatherAlert(
+        await NotificationService.sendWeatherAlert(
           title: weatherAlert.title,
           message: weatherAlert.description,
           severity: weatherAlert.severity,

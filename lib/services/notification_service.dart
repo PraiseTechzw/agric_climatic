@@ -1,354 +1,570 @@
-import 'dart:convert';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../models/notification.dart';
-import '../models/agricultural_recommendation.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:timezone/timezone.dart' as tz;
+import 'logging_service.dart';
 
 class NotificationService {
-  static final NotificationService _instance = NotificationService._internal();
-  factory NotificationService() => _instance;
-  NotificationService._internal();
+  static final FlutterLocalNotificationsPlugin _localNotifications =
+      FlutterLocalNotificationsPlugin();
+  static final FirebaseMessaging _firebaseMessaging =
+      FirebaseMessaging.instance;
+  static bool _isInitialized = false;
 
-  final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
-  final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
-  
-  bool _isInitialized = false;
-  List<AppNotification> _notifications = [];
+  // Notification channels
+  static const String _weatherChannelId = 'weather_alerts';
+  static const String _agroChannelId = 'agro_recommendations';
+  static const String _systemChannelId = 'system_notifications';
 
-  // Initialize notification services
-  Future<void> initialize() async {
+  static Future<void> initialize() async {
     if (_isInitialized) return;
 
-    // Initialize Firebase Messaging
-    await _initializeFirebaseMessaging();
-    
-    // Initialize Local Notifications
-    await _initializeLocalNotifications();
-    
-    // Request permissions
-    await _requestPermissions();
-    
-    // Load saved notifications
-    await _loadNotifications();
-    
-    _isInitialized = true;
+    try {
+      // Initialize local notifications
+      await _initializeLocalNotifications();
+
+      // Initialize Firebase messaging
+      await _initializeFirebaseMessaging();
+
+      // Request permissions
+      await _requestPermissions();
+
+      _isInitialized = true;
+      LoggingService.info('Notification service initialized');
+    } catch (e) {
+      LoggingService.error(
+        'Failed to initialize notification service',
+        error: e,
+      );
+    }
   }
 
-  Future<void> _initializeFirebaseMessaging() async {
-    // Request permission for iOS
-    NotificationSettings settings = await _firebaseMessaging.requestPermission(
+  static Future<void> _initializeLocalNotifications() async {
+    const androidSettings = AndroidInitializationSettings(
+      '@mipmap/ic_launcher',
+    );
+    const iosSettings = DarwinInitializationSettings(
+      requestAlertPermission: true,
+      requestBadgePermission: true,
+      requestSoundPermission: true,
+    );
+
+    const initSettings = InitializationSettings(
+      android: androidSettings,
+      iOS: iosSettings,
+    );
+
+    await _localNotifications.initialize(
+      initSettings,
+      onDidReceiveNotificationResponse: _onNotificationTapped,
+    );
+
+    // Create notification channels for Android
+    await _createNotificationChannels();
+  }
+
+  static Future<void> _initializeFirebaseMessaging() async {
+    // Request permission for notifications
+    final settings = await _firebaseMessaging.requestPermission(
       alert: true,
-      announcement: false,
       badge: true,
-      carPlay: false,
-      criticalAlert: false,
-      provisional: false,
       sound: true,
     );
 
     if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-      print('User granted permission');
-    } else if (settings.authorizationStatus == AuthorizationStatus.provisional) {
-      print('User granted provisional permission');
+      LoggingService.info('Firebase messaging permission granted');
     } else {
-      print('User declined or has not accepted permission');
+      LoggingService.warning('Firebase messaging permission denied');
     }
 
     // Handle background messages
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
     // Handle foreground messages
-    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      _handleForegroundMessage(message);
-    });
-
-    // Handle notification taps
-    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      _handleNotificationTap(message);
-    });
+    FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
   }
 
-  Future<void> _initializeLocalNotifications() async {
-    const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
-
-    const DarwinInitializationSettings initializationSettingsIOS =
-        DarwinInitializationSettings(
-      requestAlertPermission: true,
-      requestBadgePermission: true,
-      requestSoundPermission: true,
+  static Future<void> _createNotificationChannels() async {
+    const weatherChannel = AndroidNotificationChannel(
+      _weatherChannelId,
+      'Weather Alerts',
+      description: 'Notifications for weather alerts and warnings',
+      importance: Importance.high,
+      playSound: true,
     );
 
-    const InitializationSettings initializationSettings =
-        InitializationSettings(
-      android: initializationSettingsAndroid,
-      iOS: initializationSettingsIOS,
+    const agroChannel = AndroidNotificationChannel(
+      _agroChannelId,
+      'Agricultural Recommendations',
+      description: 'Notifications for farming recommendations and advice',
+      importance: Importance.high,
+      playSound: true,
     );
 
-    await _localNotifications.initialize(
-      initializationSettings,
-      onDidReceiveNotificationResponse: _onNotificationTapped,
+    const systemChannel = AndroidNotificationChannel(
+      _systemChannelId,
+      'System Notifications',
+      description: 'General system notifications',
+      importance: Importance.defaultImportance,
+      playSound: false,
     );
+
+    await _localNotifications
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >()
+        ?.createNotificationChannel(weatherChannel);
+
+    await _localNotifications
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >()
+        ?.createNotificationChannel(agroChannel);
+
+    await _localNotifications
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >()
+        ?.createNotificationChannel(systemChannel);
   }
 
-  Future<void> _requestPermissions() async {
+  static Future<void> _requestPermissions() async {
     // Request notification permission
-    await Permission.notification.request();
-    
-    // Request SMS permission for SMS notifications
-    await Permission.sms.request();
+    final notificationStatus = await Permission.notification.request();
+    if (notificationStatus.isGranted) {
+      LoggingService.info('Notification permission granted');
+    } else {
+      LoggingService.warning('Notification permission denied');
+    }
+
+    // Request SMS permission
+    final smsStatus = await Permission.sms.request();
+    if (smsStatus.isGranted) {
+      LoggingService.info('SMS permission granted');
+    } else {
+      LoggingService.warning('SMS permission denied');
+    }
   }
 
-  Future<void> _loadNotifications() async {
-    final prefs = await SharedPreferences.getInstance();
-    final notificationsJson = prefs.getStringList('notifications') ?? [];
-    
-    _notifications = notificationsJson
-        .map((json) => AppNotification.fromJson(jsonDecode(json)))
-        .toList();
-  }
-
-  Future<void> _saveNotifications() async {
-    final prefs = await SharedPreferences.getInstance();
-    final notificationsJson = _notifications
-        .map((notification) => jsonEncode(notification.toJson()))
-        .toList();
-    
-    await prefs.setStringList('notifications', notificationsJson);
-  }
-
-  // Send prediction update notification
-  Future<void> sendPredictionUpdate({
-    required String location,
-    required String cropType,
-    required String message,
-  }) async {
-    final notification = AppNotification(
-      id: 'pred_${DateTime.now().millisecondsSinceEpoch}',
-      title: 'Weather Prediction Update',
-      body: '$message for $cropType in $location',
-      type: 'prediction',
-      timestamp: DateTime.now(),
-      priority: 'high',
-      data: {
-        'location': location,
-        'cropType': cropType,
-        'type': 'prediction_update',
-      },
-    );
-
-    await _sendNotification(notification);
-  }
-
-  // Send agricultural recommendation notification
-  Future<void> sendAgriculturalRecommendation(AgriculturalRecommendation recommendation) async {
-    final notification = AppNotification(
-      id: 'rec_${recommendation.id}',
-      title: recommendation.title,
-      body: recommendation.description,
-      type: 'recommendation',
-      timestamp: DateTime.now(),
-      priority: recommendation.priority,
-      data: {
-        'recommendationId': recommendation.id,
-        'category': recommendation.category,
-        'cropType': recommendation.cropType,
-        'location': recommendation.location,
-      },
-    );
-
-    await _sendNotification(notification);
-  }
-
-  // Send weather alert notification
-  Future<void> sendWeatherAlert({
+  // Weather alert notifications
+  static Future<void> sendWeatherAlert({
     required String title,
     required String message,
     required String severity,
     required String location,
   }) async {
-    final notification = AppNotification(
-      id: 'alert_${DateTime.now().millisecondsSinceEpoch}',
-      title: title,
-      body: message,
-      type: 'weather_alert',
-      timestamp: DateTime.now(),
-      priority: severity == 'high' ? 'high' : 'normal',
-      data: {
-        'severity': severity,
-        'location': location,
-        'type': 'weather_alert',
-      },
-    );
+    try {
+      // Send push notification
+      await _sendLocalNotification(
+        title: '🌦️ Weather Alert: $title',
+        body: message,
+        channelId: _weatherChannelId,
+        priority: _getPriorityFromSeverity(severity),
+      );
 
-    await _sendNotification(notification);
+      // Send SMS for critical alerts
+      if (severity.toLowerCase() == 'high' ||
+          severity.toLowerCase() == 'critical') {
+        await _sendSMS(
+          message:
+              'AgriClimatic Alert: $title - $message (Location: $location)',
+        );
+      }
+
+      LoggingService.info(
+        'Weather alert sent',
+        extra: {'title': title, 'severity': severity, 'location': location},
+      );
+    } catch (e) {
+      LoggingService.error('Failed to send weather alert', error: e);
+    }
+  }
+
+  // Agricultural recommendation notifications
+  static Future<void> sendAgroRecommendation({
+    required String title,
+    required String message,
+    required String cropType,
+    required String location,
+  }) async {
+    try {
+      await _sendLocalNotification(
+        title: '🌱 $title',
+        body: message,
+        channelId: _agroChannelId,
+        priority: Priority.high,
+      );
+
+      LoggingService.info(
+        'Agro recommendation sent',
+        extra: {'title': title, 'crop_type': cropType, 'location': location},
+      );
+    } catch (e) {
+      LoggingService.error('Failed to send agro recommendation', error: e);
+    }
+  }
+
+  // Long-term prediction notifications
+  static Future<void> sendPredictionUpdate({
+    required String title,
+    required String message,
+    required String predictionType,
+    required String location,
+  }) async {
+    try {
+      await _sendLocalNotification(
+        title: '📊 $title',
+        body: message,
+        channelId: _agroChannelId,
+        priority: Priority.high,
+      );
+
+      LoggingService.info(
+        'Prediction update sent',
+        extra: {
+          'title': title,
+          'prediction_type': predictionType,
+          'location': location,
+        },
+      );
+    } catch (e) {
+      LoggingService.error('Failed to send prediction update', error: e);
+    }
+  }
+
+  // Pattern analysis notifications
+  static Future<void> sendPatternAnalysis({
+    required String title,
+    required String message,
+    required String patternType,
+    required String location,
+  }) async {
+    try {
+      await _sendLocalNotification(
+        title: '📈 $title',
+        body: message,
+        channelId: _agroChannelId,
+        priority: Priority.high,
+      );
+
+      LoggingService.info(
+        'Pattern analysis sent',
+        extra: {
+          'title': title,
+          'pattern_type': patternType,
+          'location': location,
+        },
+      );
+    } catch (e) {
+      LoggingService.error('Failed to send pattern analysis', error: e);
+    }
+  }
+
+  // System notifications
+  static Future<void> sendSystemNotification({
+    required String title,
+    required String message,
+    Priority priority = Priority.high,
+  }) async {
+    try {
+      await _sendLocalNotification(
+        title: title,
+        body: message,
+        channelId: _systemChannelId,
+        priority: priority,
+      );
+
+      LoggingService.info(
+        'System notification sent',
+        extra: {'title': title, 'priority': priority.toString()},
+      );
+    } catch (e) {
+      LoggingService.error('Failed to send system notification', error: e);
+    }
   }
 
   // Send local notification
-  Future<void> sendLocalNotification({
+  static Future<void> _sendLocalNotification({
     required String title,
     required String body,
-    String? payload,
-    int? id,
+    required String channelId,
+    required Priority priority,
+    Map<String, dynamic>? data,
   }) async {
-    const AndroidNotificationDetails androidPlatformChannelSpecifics =
-        AndroidNotificationDetails(
-      'agric_climatic_channel',
+    const androidDetails = AndroidNotificationDetails(
+      'agric_climatic',
       'AgriClimatic Notifications',
-      channelDescription: 'Notifications for agricultural and weather updates',
-      importance: Importance.max,
+      channelDescription: 'Notifications for agricultural climate predictions',
+      importance: Importance.high,
       priority: Priority.high,
       showWhen: true,
     );
 
-    const DarwinNotificationDetails iOSPlatformChannelSpecifics =
-        DarwinNotificationDetails(
+    const iosDetails = DarwinNotificationDetails(
       presentAlert: true,
       presentBadge: true,
       presentSound: true,
     );
 
-    const NotificationDetails platformChannelSpecifics = NotificationDetails(
-      android: androidPlatformChannelSpecifics,
-      iOS: iOSPlatformChannelSpecifics,
+    const notificationDetails = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
     );
 
     await _localNotifications.show(
-      id ?? DateTime.now().millisecondsSinceEpoch.remainder(100000),
+      DateTime.now().millisecondsSinceEpoch ~/ 1000,
       title,
       body,
-      platformChannelSpecifics,
-      payload: payload,
+      notificationDetails,
+      payload: data != null ? data.toString() : null,
     );
   }
 
-  // Send SMS notification (simulated - would require SMS service integration)
-  Future<void> sendSMSNotification({
-    required String phoneNumber,
-    required String message,
-  }) async {
-    // In a real implementation, you would integrate with an SMS service
-    // like Twilio, AWS SNS, or a local SMS gateway
-    print('SMS would be sent to $phoneNumber: $message');
-    
-    // For now, we'll create a local notification instead
-    await sendLocalNotification(
-      title: 'SMS Alert',
-      body: 'SMS sent to $phoneNumber: $message',
-    );
+  // Send SMS
+  static Future<void> _sendSMS({required String message}) async {
+    try {
+      // Check if SMS permission is granted
+      final smsStatus = await Permission.sms.status;
+      if (!smsStatus.isGranted) {
+        LoggingService.warning('SMS permission not granted, skipping SMS');
+        return;
+      }
+
+      // For now, we'll use the SMS app to send the message
+      // In a production app, you would integrate with an SMS service provider
+      final uri = Uri(scheme: 'sms', queryParameters: {'body': message});
+
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri);
+        LoggingService.info('SMS launched successfully');
+      } else {
+        LoggingService.warning('Could not launch SMS app');
+      }
+    } catch (e) {
+      LoggingService.error('Failed to send SMS', error: e);
+    }
   }
 
-  Future<void> _sendNotification(AppNotification notification) async {
-    // Add to local list
-    _notifications.insert(0, notification);
-    await _saveNotifications();
+  // Get priority from severity
+  static Priority _getPriorityFromSeverity(String severity) {
+    switch (severity.toLowerCase()) {
+      case 'critical':
+        return Priority.max;
+      case 'high':
+        return Priority.high;
+      case 'medium':
+        return Priority.high;
+      case 'low':
+        return Priority.low;
+      default:
+        return Priority.high;
+    }
+  }
 
-    // Send push notification
-    await sendLocalNotification(
-      title: notification.title,
-      body: notification.body,
-      payload: jsonEncode(notification.toJson()),
+  // Handle notification tap
+  static void _onNotificationTapped(NotificationResponse response) {
+    LoggingService.info(
+      'Notification tapped',
+      extra: {'payload': response.payload},
     );
 
-    // Send SMS for high priority notifications
-    if (notification.priority == 'high') {
-      await sendSMSNotification(
-        phoneNumber: '+263XXXXXXXXX', // Would be user's phone number
-        message: '${notification.title}: ${notification.body}',
+    // Handle different notification types based on payload
+    if (response.payload != null) {
+      // Parse payload and navigate accordingly
+      // This would be implemented based on your app's navigation structure
+    }
+  }
+
+  // Handle foreground messages
+  static void _handleForegroundMessage(RemoteMessage message) {
+    LoggingService.info(
+      'Foreground message received',
+      extra: {
+        'title': message.notification?.title,
+        'body': message.notification?.body,
+        'data': message.data,
+      },
+    );
+
+    // Show local notification for foreground messages
+    if (message.notification != null) {
+      _sendLocalNotification(
+        title: message.notification!.title ?? 'AgriClimatic',
+        body: message.notification!.body ?? '',
+        channelId: _systemChannelId,
+        priority: Priority.high,
+        data: message.data,
       );
     }
   }
 
-  // Get all notifications
-  List<AppNotification> getNotifications() {
-    return List.from(_notifications);
+  // Background message handler
+  static Future<void> _firebaseMessagingBackgroundHandler(
+    RemoteMessage message,
+  ) async {
+    LoggingService.info(
+      'Background message received',
+      extra: {
+        'title': message.notification?.title,
+        'body': message.notification?.body,
+        'data': message.data,
+      },
+    );
   }
 
-  // Get unread notifications
-  List<AppNotification> getUnreadNotifications() {
-    return _notifications.where((notification) => !notification.isRead).toList();
-  }
+  // Schedule recurring notifications
+  static Future<void> scheduleRecurringNotifications() async {
+    try {
+      // Schedule daily weather summary
+      await _scheduleDailyWeatherSummary();
 
-  // Mark notification as read
-  Future<void> markAsRead(String notificationId) async {
-    final index = _notifications.indexWhere((n) => n.id == notificationId);
-    if (index != -1) {
-      _notifications[index] = _notifications[index].copyWith(isRead: true);
-      await _saveNotifications();
+      // Schedule weekly agro recommendations
+      await _scheduleWeeklyAgroRecommendations();
+
+      // Schedule monthly pattern analysis
+      await _scheduleMonthlyPatternAnalysis();
+
+      LoggingService.info('Recurring notifications scheduled');
+    } catch (e) {
+      LoggingService.error(
+        'Failed to schedule recurring notifications',
+        error: e,
+      );
     }
   }
 
-  // Dismiss notification
-  Future<void> dismissNotification(String notificationId) async {
-    _notifications.removeWhere((n) => n.id == notificationId);
-    await _saveNotifications();
+  static Future<void> _scheduleDailyWeatherSummary() async {
+    // Schedule for 7:00 AM daily
+    await _localNotifications.zonedSchedule(
+      1,
+      'Daily Weather Summary',
+      'Check today\'s weather conditions and farming recommendations',
+      _nextInstanceOfTime(7, 0),
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'daily_weather',
+          'Daily Weather Summary',
+          channelDescription: 'Daily weather summary notifications',
+        ),
+      ),
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      matchDateTimeComponents: DateTimeComponents.time,
+    );
   }
 
-  // Clear all notifications
-  Future<void> clearAllNotifications() async {
-    _notifications.clear();
-    await _saveNotifications();
+  static Future<void> _scheduleWeeklyAgroRecommendations() async {
+    // Schedule for Monday 8:00 AM
+    await _localNotifications.zonedSchedule(
+      2,
+      'Weekly Agricultural Recommendations',
+      'Your weekly farming recommendations and crop advice',
+      _nextInstanceOfTime(8, 0, DateTime.monday),
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'weekly_agro',
+          'Weekly Agricultural Recommendations',
+          channelDescription: 'Weekly agricultural recommendations',
+        ),
+      ),
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
+    );
   }
 
-  // Get FCM token
-  Future<String?> getFCMToken() async {
-    return await _firebaseMessaging.getToken();
+  static Future<void> _scheduleMonthlyPatternAnalysis() async {
+    // Schedule for 1st of every month at 9:00 AM
+    await _localNotifications.zonedSchedule(
+      3,
+      'Monthly Pattern Analysis',
+      'Monthly weather pattern analysis and long-term predictions',
+      _nextInstanceOfTime(9, 0, null, 1),
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'monthly_patterns',
+          'Monthly Pattern Analysis',
+          channelDescription: 'Monthly weather pattern analysis',
+        ),
+      ),
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      matchDateTimeComponents: DateTimeComponents.dayOfMonthAndTime,
+    );
   }
 
-  // Subscribe to topic
-  Future<void> subscribeToTopic(String topic) async {
-    await _firebaseMessaging.subscribeToTopic(topic);
-  }
-
-  // Unsubscribe from topic
-  Future<void> unsubscribeFromTopic(String topic) async {
-    await _firebaseMessaging.unsubscribeFromTopic(topic);
-  }
-
-  // Handle foreground messages
-  void _handleForegroundMessage(RemoteMessage message) {
-    print('Received foreground message: ${message.messageId}');
-    
-    // Create notification from message
-    final notification = AppNotification(
-      id: message.messageId ?? DateTime.now().millisecondsSinceEpoch.toString(),
-      title: message.notification?.title ?? 'AgriClimatic Alert',
-      body: message.notification?.body ?? 'New update available',
-      type: message.data['type'] ?? 'general',
-      timestamp: DateTime.now(),
-      data: message.data,
+  static tz.TZDateTime _nextInstanceOfTime(
+    int hour,
+    int minute, [
+    int? weekday,
+    int? dayOfMonth,
+  ]) {
+    final now = DateTime.now();
+    var scheduledDate = tz.TZDateTime.from(
+      now,
+      tz.getLocation('Africa/Harare'),
     );
 
-    _notifications.insert(0, notification);
-    _saveNotifications();
-  }
+    scheduledDate = tz.TZDateTime(
+      scheduledDate.location,
+      scheduledDate.year,
+      scheduledDate.month,
+      dayOfMonth ?? scheduledDate.day,
+      hour,
+      minute,
+    );
 
-  // Handle notification tap
-  void _handleNotificationTap(RemoteMessage message) {
-    print('Notification tapped: ${message.messageId}');
-    // Handle navigation based on notification type
-  }
-
-  // Handle local notification tap
-  void _onNotificationTapped(NotificationResponse response) {
-    print('Local notification tapped: ${response.payload}');
-    
-    if (response.payload != null) {
-      try {
-        final data = jsonDecode(response.payload!);
-        final notification = AppNotification.fromJson(data);
-        markAsRead(notification.id);
-      } catch (e) {
-        print('Error parsing notification payload: $e');
+    if (weekday != null) {
+      while (scheduledDate.weekday != weekday) {
+        scheduledDate = scheduledDate.add(const Duration(days: 1));
       }
     }
-  }
-}
 
-// Background message handler
-@pragma('vm:entry-point')
-Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  print('Handling background message: ${message.messageId}');
+    if (scheduledDate.isBefore(now)) {
+      if (weekday != null) {
+        scheduledDate = scheduledDate.add(const Duration(days: 7));
+      } else if (dayOfMonth != null) {
+        scheduledDate = tz.TZDateTime(
+          scheduledDate.location,
+          scheduledDate.year,
+          scheduledDate.month + 1,
+          dayOfMonth,
+          hour,
+          minute,
+        );
+      } else {
+        scheduledDate = scheduledDate.add(const Duration(days: 1));
+      }
+    }
+
+    return scheduledDate;
+  }
+
+  // Cancel all notifications
+  static Future<void> cancelAllNotifications() async {
+    await _localNotifications.cancelAll();
+    LoggingService.info('All notifications cancelled');
+  }
+
+  // Cancel specific notification
+  static Future<void> cancelNotification(int id) async {
+    await _localNotifications.cancel(id);
+    LoggingService.info('Notification $id cancelled');
+  }
+
+  // Get pending notifications
+  static Future<List<PendingNotificationRequest>>
+  getPendingNotifications() async {
+    return await _localNotifications.pendingNotificationRequests();
+  }
+
+  // Check if notifications are enabled
+  static Future<bool> areNotificationsEnabled() async {
+    final status = await Permission.notification.status;
+    return status.isGranted;
+  }
+
+  // Request notification permission
+  static Future<bool> requestNotificationPermission() async {
+    final status = await Permission.notification.request();
+    return status.isGranted;
+  }
 }
