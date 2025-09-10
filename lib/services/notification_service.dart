@@ -34,9 +34,12 @@ class NotificationService {
 
       // Initialize Twilio (you'll need to add your credentials)
       _twilioFlutter = TwilioFlutter(
-        accountSid: 'YOUR_TWILIO_ACCOUNT_SID', // Replace with your Twilio Account SID
-        authToken: 'YOUR_TWILIO_AUTH_TOKEN',   // Replace with your Twilio Auth Token
-        twilioNumber: 'YOUR_TWILIO_PHONE_NUMBER', // Replace with your Twilio phone number
+        accountSid:
+            'YOUR_TWILIO_ACCOUNT_SID', // Replace with your Twilio Account SID
+        authToken:
+            'YOUR_TWILIO_AUTH_TOKEN', // Replace with your Twilio Auth Token
+        twilioNumber:
+            'YOUR_TWILIO_PHONE_NUMBER', // Replace with your Twilio phone number
       );
 
       _isInitialized = true;
@@ -331,7 +334,10 @@ class NotificationService {
   }
 
   // Send SMS using Twilio
-  static Future<void> _sendSMS({required String message, String? phoneNumber}) async {
+  static Future<void> _sendSMS({
+    required String message,
+    String? phoneNumber,
+  }) async {
     try {
       if (_twilioFlutter == null) {
         LoggingService.warning('Twilio not initialized, skipping SMS');
@@ -339,18 +345,20 @@ class NotificationService {
       }
 
       // Use a default phone number if none provided
-      final recipientNumber = phoneNumber ?? '+263XXXXXXXXX'; // Replace with default Zimbabwe number
-      
+      final recipientNumber =
+          phoneNumber ??
+          '+263XXXXXXXXX'; // Replace with default Zimbabwe number
+
       // Send SMS using Twilio
       await _twilioFlutter!.sendSMS(
         toNumber: recipientNumber,
         messageBody: message,
       );
-      
+
       LoggingService.info('SMS sent successfully via Twilio');
     } catch (e) {
       LoggingService.error('Failed to send SMS via Twilio', error: e);
-      
+
       // Fallback to SMS app if Twilio fails
       try {
         final uri = Uri(scheme: 'sms', queryParameters: {'body': message});

@@ -9,7 +9,26 @@
       "client_info": {
         "mobilesdk_app_id": "1:846124224235:android:37621ded5ef3b24c8938ae",
         "android_client_info": {
-          "package_name": "com.example.agric_climatic"
+          "package_name": "com.agricclimatic.zimbabwe"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCldgKYVa9sPyhmsnOncVGh0R4HrLfrN7I"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:846124224235:android:37621ded5ef3b24c8938ae",
+        "android_client_info": {
+          "package_name": "com.agricclimatic.zimbabwe.debug"
         }
       },
       "oauth_client": [],
