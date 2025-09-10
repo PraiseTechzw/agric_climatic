@@ -659,7 +659,7 @@ class _DebugScreenState extends State<DebugScreen> {
           children: [
             Text('Debug settings are configured in EnvironmentService.'),
             SizedBox(height: 16),
-            Text('Current settings:'),
+            const Text('Current settings:'),
             Text('• Debug Menu: ${EnvironmentService.enableDebugMenu}'),
             Text('• API Logging: ${EnvironmentService.enableApiLogging}'),
             Text('• Performance Logging: ${EnvironmentService.enablePerformanceLogging}'),

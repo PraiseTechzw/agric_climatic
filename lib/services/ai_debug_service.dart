@@ -105,7 +105,7 @@ Format as a structured analysis with specific recommendations.
       // In a real implementation, you would expose a public method in FirebaseAIService
       final response = await _generateMockAIResponse(prompt);
 
-      final diagnosis = _parseDiagnosis(response.text ?? '');
+      final diagnosis = _parseDiagnosis(response['text'] ?? '');
       
       // Store the issue for future reference
       _reportedIssues.add(DebugIssue(
