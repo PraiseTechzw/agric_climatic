@@ -1,17 +1,11 @@
 import 'dart:developer' as developer;
 import 'package:flutter/foundation.dart';
 
-enum LogLevel {
-  debug,
-  info,
-  warning,
-  error,
-  critical,
-}
+enum LogLevel { debug, info, warning, error, critical }
 
 class LoggingService {
   static const String _tag = 'AgriClimatic';
-  
+
   static void log(
     String message, {
     LogLevel level = LogLevel.info,
@@ -23,9 +17,9 @@ class LoggingService {
     final logTag = tag ?? _tag;
     final timestamp = DateTime.now().toIso8601String();
     final levelString = level.name.toUpperCase();
-    
+
     final logMessage = '[$timestamp] [$levelString] [$logTag] $message';
-    
+
     if (kDebugMode) {
       // In debug mode, use developer.log for better formatting
       developer.log(
@@ -35,7 +29,7 @@ class LoggingService {
         error: error,
         stackTrace: stackTrace,
       );
-      
+
       if (extra != null) {
         developer.log('Extra data: $extra', name: logTag);
       }
@@ -53,27 +47,62 @@ class LoggingService {
       }
     }
   }
-  
-  static void debug(String message, {String? tag, Map<String, dynamic>? extra}) {
+
+  static void debug(
+    String message, {
+    String? tag,
+    Map<String, dynamic>? extra,
+  }) {
     log(message, level: LogLevel.debug, tag: tag, extra: extra);
   }
-  
+
   static void info(String message, {String? tag, Map<String, dynamic>? extra}) {
     log(message, level: LogLevel.info, tag: tag, extra: extra);
   }
-  
-  static void warning(String message, {String? tag, Object? error, Map<String, dynamic>? extra}) {
+
+  static void warning(
+    String message, {
+    String? tag,
+    Object? error,
+    Map<String, dynamic>? extra,
+  }) {
     log(message, level: LogLevel.warning, tag: tag, error: error, extra: extra);
   }
-  
-  static void error(String message, {String? tag, Object? error, StackTrace? stackTrace, Map<String, dynamic>? extra}) {
-    log(message, level: LogLevel.error, tag: tag, error: error, stackTrace: stackTrace, extra: extra);
+
+  static void error(
+    String message, {
+    String? tag,
+    Object? error,
+    StackTrace? stackTrace,
+    Map<String, dynamic>? extra,
+  }) {
+    log(
+      message,
+      level: LogLevel.error,
+      tag: tag,
+      error: error,
+      stackTrace: stackTrace,
+      extra: extra,
+    );
   }
-  
-  static void critical(String message, {String? tag, Object? error, StackTrace? stackTrace, Map<String, dynamic>? extra}) {
-    log(message, level: LogLevel.critical, tag: tag, error: error, stackTrace: stackTrace, extra: extra);
+
+  static void critical(
+    String message, {
+    String? tag,
+    Object? error,
+    StackTrace? stackTrace,
+    Map<String, dynamic>? extra,
+  }) {
+    log(
+      message,
+      level: LogLevel.critical,
+      tag: tag,
+      error: error,
+      stackTrace: stackTrace,
+      extra: extra,
+    );
   }
-  
+
   static int _getLogLevelValue(LogLevel level) {
     switch (level) {
       case LogLevel.debug:
@@ -88,63 +117,133 @@ class LoggingService {
         return 1200;
     }
   }
-  
+
   // Log API calls
-  static void logApiCall(String method, String url, {Map<String, dynamic>? requestData, Map<String, dynamic>? responseData, int? statusCode, Duration? duration}) {
+  static void logApiCall(
+    String method,
+    String url, {
+    Map<String, dynamic>? requestData,
+    Map<String, dynamic>? responseData,
+    int? statusCode,
+    Duration? duration,
+  }) {
     final extra = <String, dynamic>{
       'method': method,
       'url': url,
       'duration_ms': duration?.inMilliseconds,
       'status_code': statusCode,
     };
-    
+
     if (requestData != null) {
       extra['request_data'] = requestData;
     }
-    
+
     if (responseData != null) {
       extra['response_data'] = responseData;
     }
-    
+
     if (statusCode != null && statusCode >= 400) {
       error('API call failed', tag: 'API', extra: extra);
     } else {
       info('API call completed', tag: 'API', extra: extra);
     }
   }
-  
+
   // Log user actions
-  static void logUserAction(String action, {String? screen, Map<String, dynamic>? data}) {
-    final extra = <String, dynamic>{
-      'action': action,
-      'screen': screen,
-    };
-    
+  static void logUserAction(
+    String action, {
+    String? screen,
+    Map<String, dynamic>? data,
+  }) {
+    final extra = <String, dynamic>{'action': action, 'screen': screen};
+
     if (data != null) {
       extra.addAll(data);
     }
-    
+
     info('User action: $action', tag: 'USER', extra: extra);
   }
-  
+
   // Log performance metrics
-  static void logPerformance(String operation, Duration duration, {Map<String, dynamic>? metrics}) {
+  static void logPerformance(
+    String operation,
+    Duration duration, {
+    Map<String, dynamic>? metrics,
+  }) {
     final extra = <String, dynamic>{
       'operation': operation,
       'duration_ms': duration.inMilliseconds,
     };
-    
+
     if (metrics != null) {
       extra.addAll(metrics);
     }
-    
+
     if (duration.inMilliseconds > 1000) {
-      warning('Slow operation: $operation', tag: 'PERFORMANCE', extra: extra);
+      warning(
+        'Slow operation: $operation took ${duration.inMilliseconds}ms',
+        extra: extra,
+      );
     } else {
-      info('Operation completed: $operation', tag: 'PERFORMANCE', extra: extra);
+      debug(
+        'Operation completed: $operation took ${duration.inMilliseconds}ms',
+        extra: extra,
+      );
     }
   }
-  
+
+  // Log AI operations
+  static void logAiOperation(
+    String operation, {
+    Map<String, dynamic>? requestData,
+    Map<String, dynamic>? responseData,
+    Duration? duration,
+    String? error,
+  }) {
+    final extra = <String, dynamic>{
+      'operation': operation,
+      'duration_ms': duration?.inMilliseconds,
+    };
+
+    if (requestData != null) {
+      extra['request_data'] = requestData;
+    }
+
+    if (responseData != null) {
+      extra['response_data'] = responseData;
+    }
+
+    if (error != null) {
+      error('AI operation failed: $operation', tag: 'AI', extra: extra);
+    } else {
+      info('AI operation completed: $operation', tag: 'AI', extra: extra);
+    }
+  }
+
+  // Log system events
+  static void logSystemEvent(String event, {Map<String, dynamic>? data}) {
+    final extra = <String, dynamic>{'event': event};
+
+    if (data != null) {
+      extra.addAll(data);
+    }
+
+    info('System event: $event', tag: 'SYSTEM', extra: extra);
+  }
+
+  // Get recent logs for debug console
+  static List<Map<String, dynamic>> getRecentLogs({int limit = 100}) {
+    // This would typically read from a log storage
+    // For now, return empty list as logs are handled in memory
+    return [];
+  }
+
+  // Clear all logs
+  static void clearLogs() {
+    // This would typically clear log storage
+    // For now, this is handled by the debug console widget
+  }
+
   // Log errors with context
   static void logErrorWithContext(
     String message,
@@ -159,11 +258,17 @@ class LoggingService {
       'error_message': error.toString(),
       'context': context,
     };
-    
+
     if (extra != null) {
       errorExtra.addAll(extra);
     }
-    
-    critical(message, tag: tag, error: error, stackTrace: stackTrace, extra: errorExtra);
+
+    critical(
+      message,
+      tag: tag,
+      error: error,
+      stackTrace: stackTrace,
+      extra: errorExtra,
+    );
   }
 }

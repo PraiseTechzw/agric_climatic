@@ -4,9 +4,12 @@ import '../models/weather.dart';
 import '../models/soil_data.dart';
 
 class ZimbabweApiService {
-  // Open-Meteo API for weather data (free, no API key required)
-  static const String _openMeteoBaseUrl =
+  // Open-Meteo API endpoints (free, no API key required)
+  static const String _openMeteoForecastUrl =
+      'https://api.open-meteo.com/v1/forecast';
+  static const String _openMeteoArchiveUrl =
       'https://archive-api.open-meteo.com/v1/archive';
+  static const String _openMeteoSoilUrl = 'https://api.open-meteo.com/v1/soil';
 
   // OpenWeatherMap API (free tier available) - for future use
   // static const String _openWeatherBaseUrl = 'https://api.openweathermap.org/data/2.5';
@@ -40,7 +43,7 @@ class ZimbabweApiService {
 
       final response = await http.get(
         Uri.parse(
-          '$_openMeteoBaseUrl/forecast?'
+          '$_openMeteoForecastUrl?'
           'latitude=${coords['lat']}&'
           'longitude=${coords['lon']}&'
           'current_weather=true&'
@@ -70,7 +73,7 @@ class ZimbabweApiService {
 
       final response = await http.get(
         Uri.parse(
-          '$_openMeteoBaseUrl/forecast?'
+          '$_openMeteoForecastUrl?'
           'latitude=${coords['lat']}&'
           'longitude=${coords['lon']}&'
           'hourly=temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m&'
@@ -106,7 +109,7 @@ class ZimbabweApiService {
 
       final response = await http.get(
         Uri.parse(
-          '$_openMeteoBaseUrl/forecast?'
+          '$_openMeteoArchiveUrl?'
           'latitude=${coords['lat']}&'
           'longitude=${coords['lon']}&'
           'hourly=temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m&'
@@ -141,7 +144,7 @@ class ZimbabweApiService {
 
       final response = await http.get(
         Uri.parse(
-          '$_openMeteoBaseUrl/forecast?'
+          '$_openMeteoForecastUrl?'
           'latitude=${coords['lat']}&'
           'longitude=${coords['lon']}&'
           'hourly=temperature_2m,relative_humidity_2m,precipitation,soil_temperature_0cm,soil_moisture_0_1cm&'
@@ -172,31 +175,74 @@ class ZimbabweApiService {
         throw Exception('City not found: $city');
       }
 
-      // Use Open-Meteo soil data API for real soil information
+      // Try OpenEPI Soil API first (free, global, agricultural-focused)
+      try {
+        final soilData = await _getSoilDataFromOpenEPI(
+          coords['lat']!,
+          coords['lon']!,
+          city,
+        );
+        return soilData;
+      } catch (openEpiError) {
+        print('OpenEPI API failed, trying Open-Meteo: $openEpiError');
+
+        // Fallback to Open-Meteo soil data API
+        final response = await http.get(
+          Uri.parse(
+            '$_openMeteoSoilUrl?'
+            'latitude=${coords['lat']}&'
+            'longitude=${coords['lon']}&'
+            'hourly=soil_temperature_0cm,soil_moisture_0_1cm&'
+            'daily=soil_temperature_0cm_max,soil_temperature_0cm_min&'
+            'timezone=Africa/Harare',
+          ),
+        );
+
+        if (response.statusCode == 200) {
+          final data = json.decode(response.body);
+          return _parseSoilDataFromOpenMeteo(
+            data,
+            city,
+            coords['lat']!,
+            coords['lon']!,
+          );
+        } else {
+          throw Exception(
+            'Both APIs failed. Open-Meteo status: ${response.statusCode}',
+          );
+        }
+      }
+    } catch (e) {
+      throw Exception('Error getting soil data: $e');
+    }
+  }
+
+  // Get soil data from OpenEPI API
+  static Future<SoilData> _getSoilDataFromOpenEPI(
+    double latitude,
+    double longitude,
+    String city,
+  ) async {
+    try {
+      // OpenEPI Soil API endpoint
       final response = await http.get(
         Uri.parse(
-          '$_openMeteoBaseUrl/forecast?'
-          'latitude=${coords['lat']}&'
-          'longitude=${coords['lon']}&'
-          'hourly=soil_temperature_0cm,soil_moisture_0_1cm&'
-          'daily=soil_temperature_0cm_max,soil_temperature_0cm_min&'
-          'timezone=Africa/Harare',
+          'https://api.openepi.io/soil/soil-properties?'
+          'lat=$latitude&lon=$longitude',
         ),
+        headers: {'Accept': 'application/json'},
       );
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        return _parseSoilDataFromOpenMeteo(
-          data,
-          city,
-          coords['lat']!,
-          coords['lon']!,
-        );
+        return _parseSoilDataFromOpenEPI(data, city, latitude, longitude);
       } else {
-        throw Exception('Failed to fetch soil data: ${response.statusCode}');
+        throw Exception(
+          'OpenEPI API failed with status: ${response.statusCode}',
+        );
       }
     } catch (e) {
-      throw Exception('Error getting soil data: $e');
+      throw Exception('OpenEPI API error: $e');
     }
   }
 
@@ -682,6 +728,212 @@ class ZimbabweApiService {
     return values.fold(
       double.infinity,
       (min, value) => value.toDouble() < min ? value.toDouble() : min,
+    );
+  }
+
+  // Parse soil data from OpenEPI API
+  static SoilData _parseSoilDataFromOpenEPI(
+    Map<String, dynamic> data,
+    String city,
+    double latitude,
+    double longitude,
+  ) {
+    try {
+      // Extract soil properties from OpenEPI response
+      final properties = data['properties'] as Map<String, dynamic>? ?? {};
+
+      // Get soil pH (0-5cm depth)
+      final ph = _extractSoilValue(properties, 'ph_0_5cm_mean', 6.5);
+
+      // Get organic carbon content (0-5cm depth) - convert to organic matter
+      final organicCarbon = _extractSoilValue(
+        properties,
+        'soc_0_5cm_mean',
+        1.5,
+      );
+      final organicMatter = organicCarbon * 1.72; // Convert SOC to OM
+
+      // Get nitrogen content (0-5cm depth)
+      final nitrogen =
+          _extractSoilValue(properties, 'nitrogen_0_5cm_mean', 0.15) *
+          1000; // Convert to mg/kg
+
+      // Get phosphorus content (0-5cm depth)
+      final phosphorus =
+          _extractSoilValue(properties, 'phosphorus_0_5cm_mean', 0.01) *
+          1000; // Convert to mg/kg
+
+      // Get potassium content (0-5cm depth)
+      final potassium =
+          _extractSoilValue(properties, 'potassium_0_5cm_mean', 0.2) *
+          1000; // Convert to mg/kg
+
+      // Get bulk density for soil texture estimation (not used in current implementation)
+      // final bulkDensity = _extractSoilValue(properties, 'bdod_0_5cm_mean', 1.3);
+
+      // Get clay content for texture classification
+      final clayContent = _extractSoilValue(
+        properties,
+        'clay_0_5cm_mean',
+        25.0,
+      );
+      final sandContent = _extractSoilValue(
+        properties,
+        'sand_0_5cm_mean',
+        40.0,
+      );
+      final siltContent = _extractSoilValue(
+        properties,
+        'silt_0_5cm_mean',
+        35.0,
+      );
+
+      // Estimate soil moisture based on clay content and season
+      final soilMoisture = _estimateSoilMoisture(clayContent, city);
+
+      // Estimate soil temperature based on location and season
+      final soilTemperature = _estimateSoilTemperature(city);
+
+      return SoilData(
+        id: 'openepi_${city}_${DateTime.now().millisecondsSinceEpoch}',
+        location: city,
+        ph: ph,
+        organicMatter: organicMatter,
+        nitrogen: nitrogen,
+        phosphorus: phosphorus,
+        potassium: potassium,
+        soilMoisture: soilMoisture,
+        soilTemperature: soilTemperature,
+        soilType: _classifySoilType(clayContent, sandContent, siltContent),
+        texture: _classifySoilTexture(clayContent, sandContent, siltContent),
+        drainage: _classifyDrainage(clayContent, sandContent),
+        lastUpdated: DateTime.now(),
+      );
+    } catch (e) {
+      // If parsing fails, return fallback data
+      return _getFallbackSoilData(city, latitude, longitude);
+    }
+  }
+
+  // Extract soil value from OpenEPI response with fallback
+  static double _extractSoilValue(
+    Map<String, dynamic> properties,
+    String key,
+    double fallback,
+  ) {
+    try {
+      final value = properties[key];
+      if (value != null && value is num) {
+        return value.toDouble();
+      }
+      return fallback;
+    } catch (e) {
+      return fallback;
+    }
+  }
+
+  // Estimate soil moisture based on clay content and location
+  static double _estimateSoilMoisture(double clayContent, String city) {
+    // Base moisture on clay content (clay holds more water)
+    double baseMoisture = 30.0 + (clayContent * 0.8);
+
+    // Adjust for Zimbabwe's seasonal patterns
+    final month = DateTime.now().month;
+    if (month >= 11 || month <= 3) {
+      // Wet season (Nov-Mar)
+      baseMoisture += 20.0;
+    } else if (month >= 4 && month <= 6) {
+      // Dry season (Apr-Jun)
+      baseMoisture -= 15.0;
+    }
+
+    return baseMoisture.clamp(10.0, 80.0);
+  }
+
+  // Estimate soil temperature based on location and season
+  static double _estimateSoilTemperature(String city) {
+    final month = DateTime.now().month;
+    double baseTemp = 22.0; // Base temperature for Zimbabwe
+
+    // Adjust for season
+    if (month >= 10 || month <= 2) {
+      // Hot season
+      baseTemp += 5.0;
+    } else if (month >= 6 && month <= 8) {
+      // Cool season
+      baseTemp -= 3.0;
+    }
+
+    // Adjust for city (higher altitude = cooler)
+    if (city.toLowerCase().contains('bulawayo') ||
+        city.toLowerCase().contains('gwanda')) {
+      baseTemp -= 2.0; // Higher altitude
+    }
+
+    return baseTemp.clamp(15.0, 35.0);
+  }
+
+  // Classify soil type based on clay, sand, and silt content
+  static String _classifySoilType(double clay, double sand, double silt) {
+    if (clay > 40) {
+      return 'Clay';
+    } else if (sand > 70) {
+      return 'Sandy';
+    } else if (clay > 25 && sand > 45) {
+      return 'Clay Loam';
+    } else if (sand > 50 && clay < 20) {
+      return 'Sandy Loam';
+    } else if (silt > 50) {
+      return 'Silt Loam';
+    } else {
+      return 'Loam';
+    }
+  }
+
+  // Classify soil texture based on USDA texture triangle
+  static String _classifySoilTexture(double clay, double sand, double silt) {
+    if (clay > 40) {
+      return 'Fine';
+    } else if (sand > 70) {
+      return 'Coarse';
+    } else {
+      return 'Medium';
+    }
+  }
+
+  // Classify drainage based on clay and sand content
+  static String _classifyDrainage(double clay, double sand) {
+    if (sand > 60) {
+      return 'Excellent';
+    } else if (clay > 40) {
+      return 'Poor';
+    } else if (clay > 25) {
+      return 'Moderate';
+    } else {
+      return 'Good';
+    }
+  }
+
+  // Fallback soil data when API parsing fails
+  static SoilData _getFallbackSoilData(
+    String city,
+    double latitude,
+    double longitude,
+  ) {
+    return SoilData(
+      id: 'fallback_${city}_${DateTime.now().millisecondsSinceEpoch}',
+      location: city,
+      ph: 6.5,
+      organicMatter: 2.5,
+      nitrogen: 50.0,
+      phosphorus: 25.0,
+      potassium: 180.0,
+      soilMoisture: 45.0,
+      soilTemperature: 24.0,
+      soilType: 'Loam',
+      texture: 'Medium',
+      drainage: 'Good',
+      lastUpdated: DateTime.now(),
     );
   }
 }

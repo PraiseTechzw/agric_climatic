@@ -16,6 +16,7 @@ import 'screens/analytics_screen.dart';
 import 'screens/soil_data_screen.dart';
 import 'screens/notifications_screen.dart';
 import 'screens/ai_insights_screen.dart';
+import 'screens/debug_screen.dart';
 import 'providers/weather_provider.dart';
 import 'providers/notification_provider.dart';
 
@@ -147,6 +148,7 @@ class _MainScreenState extends State<MainScreen> {
     const AnalyticsScreen(),
     const SoilDataScreen(),
     const AIInsightsScreen(),
+    if (EnvironmentService.enableDebugMenu) const DebugScreen(),
   ];
 
   @override
@@ -325,6 +327,25 @@ class _MainScreenState extends State<MainScreen> {
                 ),
                 label: 'AI Insights',
               ),
+              if (EnvironmentService.enableDebugMenu)
+                BottomNavigationBarItem(
+                  icon: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: _selectedIndex == 5
+                          ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      _selectedIndex == 5
+                          ? Icons.bug_report
+                          : Icons.bug_report_outlined,
+                      size: 24,
+                    ),
+                  ),
+                  label: 'Debug',
+                ),
             ],
           ),
         ),

@@ -77,6 +77,72 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     }
   }
 
+  Future<void> _generateSampleData() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      // Generate sample weather patterns for demonstration
+      final samplePatterns = _generateSamplePatterns();
+
+      setState(() {
+        _patterns = samplePatterns;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+        _isLoading = false;
+      });
+    }
+  }
+
+  List<HistoricalWeatherPattern> _generateSamplePatterns() {
+    final patterns = <HistoricalWeatherPattern>[];
+    final seasons = ['Spring', 'Summer', 'Autumn', 'Winter'];
+    final patternTypes = [
+      'hot_wet',
+      'hot_dry',
+      'cool_wet',
+      'cool_dry',
+      'moderate',
+    ];
+
+    for (int i = 0; i < 4; i++) {
+      final random = DateTime.now().millisecondsSinceEpoch + i;
+      final season = seasons[i];
+      final patternType = patternTypes[random % patternTypes.length];
+
+      patterns.add(
+        HistoricalWeatherPattern(
+          id: 'sample_${season.toLowerCase()}_${DateTime.now().millisecondsSinceEpoch}',
+          location: 'Sample Location',
+          season: season,
+          patternType: patternType,
+          averageTemperature: 20.0 + (random % 20) - 10, // 10-30°C
+          totalPrecipitation: (random % 200) + 50, // 50-250mm
+          averageHumidity: 40.0 + (random % 40), // 40-80%
+          anomalies: random % 3 == 0
+              ? ['Temperature spike', 'Unusual rainfall']
+              : [],
+          trends: {
+            'temperature': (random % 10 - 5) / 10.0, // -0.5 to 0.5
+            'precipitation': (random % 10 - 5) / 10.0,
+            'humidity': (random % 10 - 5) / 10.0,
+          },
+          summary:
+              'Sample ${season.toLowerCase()} weather pattern showing typical ${patternType.replaceAll('_', ' ')} conditions for this region.',
+          startDate: DateTime.now().subtract(Duration(days: (i + 1) * 90)),
+          endDate: DateTime.now().subtract(Duration(days: i * 90)),
+        ),
+      );
+    }
+
+    return patterns;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -99,9 +165,12 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
               ),
             ),
             const SizedBox(width: 12),
-            const Text(
-              'Sequential Weather Pattern Analysis',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 24),
+            Expanded(
+              child: Text(
+                'Weather Analytics',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           ],
         ),
@@ -253,22 +322,72 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
 
   Widget _buildEmptyState() {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.analytics_outlined, size: 64, color: Colors.grey[400]),
-          const SizedBox(height: 16),
-          Text(
-            'No analytics data available',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Historical weather data is needed to generate analytics',
-            style: Theme.of(context).textTheme.bodyMedium,
-            textAlign: TextAlign.center,
-          ),
-        ],
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(50),
+              ),
+              child: Icon(
+                Icons.analytics_outlined,
+                size: 64,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'No Analytics Data Available',
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Historical weather data is needed to generate analytics. Try changing the time period or check your location settings.',
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 32),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ElevatedButton.icon(
+                  onPressed: _loadAnalytics,
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Refresh'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                OutlinedButton.icon(
+                  onPressed: _generateSampleData,
+                  icon: const Icon(Icons.science),
+                  label: const Text('Generate Sample'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

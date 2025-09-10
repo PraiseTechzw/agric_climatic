@@ -7,47 +7,19 @@ import '../models/weather_alert.dart';
 class WeatherService {
   final SupabaseClient _supabase = Supabase.instance.client;
 
-  // Open-Meteo API configuration for Zimbabwe
-  static const String _baseUrl = 'https://api.open-meteo.com/v1';
-
-  // Zimbabwe cities coordinates
-  final Map<String, Map<String, double>> _zimbabweCities = {
-    'Harare': {'lat': -17.8252, 'lon': 31.0335},
-    'Bulawayo': {'lat': -20.1569, 'lon': 28.5891},
-    'Chitungwiza': {'lat': -18.0128, 'lon': 31.0756},
-    'Mutare': {'lat': -18.9707, 'lon': 32.6729},
-    'Gweru': {'lat': -19.4500, 'lon': 29.8167},
-    'Kwekwe': {'lat': -18.9289, 'lon': 29.8149},
-    'Kadoma': {'lat': -18.3333, 'lon': 29.9167},
-    'Masvingo': {'lat': -20.0737, 'lon': 30.8278},
-    'Chinhoyi': {'lat': -17.3667, 'lon': 30.2000},
-    'Marondera': {'lat': -18.1853, 'lon': 31.5519},
-    'Bindura': {'lat': -17.3019, 'lon': 31.3306},
-    'Beitbridge': {'lat': -22.2167, 'lon': 30.0000},
-    'Hwange': {'lat': -18.3667, 'lon': 26.5000},
-    'Victoria Falls': {'lat': -17.9243, 'lon': 25.8572},
-    'Chipinge': {'lat': -20.2000, 'lon': 32.6167},
-    'Rusape': {'lat': -18.5333, 'lon': 32.1167},
-    'Chegutu': {'lat': -18.1333, 'lon': 30.1500},
-    'Norton': {'lat': -17.8833, 'lon': 30.7000},
-    'Redcliff': {'lat': -19.0167, 'lon': 29.7833},
-    'Chiredzi': {'lat': -21.0500, 'lon': 31.6667},
-  };
+  // WeatherAPI configuration for Zimbabwe
+  static const String _baseUrl = 'http://api.weatherapi.com/v1';
+  static const String _apiKey = '4360f911bf30467c85c12953251009';
 
   Future<Weather> getCurrentWeather({String city = 'Harare'}) async {
     try {
-      final coords = _zimbabweCities[city];
-      if (coords == null) {
-        throw Exception('City not found: $city');
-      }
-
       final url =
-          '$_baseUrl/forecast?latitude=${coords['lat']}&longitude=${coords['lon']}&current_weather=true&hourly=temperature_2m,relative_humidity_2m,wind_speed_10m,precipitation,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum&timezone=Africa/Harare';
+          '$_baseUrl/current.json?key=$_apiKey&q=$city&aqi=yes&pollen=yes';
       final response = await http.get(Uri.parse(url));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        return _parseCurrentWeatherFromOpenMeteo(data, city);
+        return _parseCurrentWeatherFromWeatherAPI(data, city);
       } else {
         throw Exception('Failed to fetch weather data: ${response.statusCode}');
       }
@@ -58,18 +30,13 @@ class WeatherService {
 
   Future<WeatherForecast> getForecast({String city = 'Harare'}) async {
     try {
-      final coords = _zimbabweCities[city];
-      if (coords == null) {
-        throw Exception('City not found: $city');
-      }
-
       final url =
-          '$_baseUrl/forecast?latitude=${coords['lat']}&longitude=${coords['lon']}&hourly=temperature_2m,relative_humidity_2m,wind_speed_10m,precipitation,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum&timezone=Africa/Harare&forecast_days=7';
+          '$_baseUrl/forecast.json?key=$_apiKey&q=$city&days=7&aqi=yes&alerts=yes&pollen=yes';
       final response = await http.get(Uri.parse(url));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        return _parseForecastFromOpenMeteo(data);
+        return _parseForecastFromWeatherAPI(data);
       } else {
         throw Exception(
           'Failed to fetch forecast data: ${response.statusCode}',
@@ -111,82 +78,202 @@ class WeatherService {
     }
   }
 
-  Weather _parseCurrentWeatherFromOpenMeteo(
+  // New WeatherAPI.com specific methods
+
+  /// Get weather alerts from WeatherAPI.com
+  Future<List<WeatherAlert>> getWeatherAPIAlerts({
+    String city = 'Harare',
+  }) async {
+    try {
+      final url = '$_baseUrl/alerts.json?key=$_apiKey&q=$city';
+      final response = await http.get(Uri.parse(url));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return _parseWeatherAPIAlerts(data);
+      } else {
+        throw Exception(
+          'Failed to fetch weather alerts: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      throw Exception('Failed to get weather alerts for $city: $e');
+    }
+  }
+
+  /// Get astronomy data for agricultural timing
+  Future<AstronomyData> getAstronomyData({String city = 'Harare'}) async {
+    try {
+      final url = '$_baseUrl/astronomy.json?key=$_apiKey&q=$city';
+      final response = await http.get(Uri.parse(url));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return AstronomyData.fromJson(data['astronomy']['astro']);
+      } else {
+        throw Exception(
+          'Failed to fetch astronomy data: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      throw Exception('Failed to get astronomy data for $city: $e');
+    }
+  }
+
+  /// Get historical weather from WeatherAPI.com
+  Future<List<Weather>> getWeatherAPIHistoricalWeather({
+    required DateTime date,
+    String city = 'Harare',
+  }) async {
+    try {
+      final dateStr = date.toIso8601String().split('T')[0];
+      final url =
+          '$_baseUrl/history.json?key=$_apiKey&q=$city&dt=$dateStr&aqi=yes&pollen=yes';
+      final response = await http.get(Uri.parse(url));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return _parseHistoricalWeatherFromWeatherAPI(data);
+      } else {
+        throw Exception(
+          'Failed to fetch historical weather: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      throw Exception('Failed to get historical weather for $city: $e');
+    }
+  }
+
+  /// Get bulk weather data for multiple Zimbabwe locations
+  Future<Map<String, Weather>> getBulkWeatherData({
+    List<String>? cities,
+  }) async {
+    try {
+      final citiesToQuery =
+          cities ??
+          [
+            'Harare',
+            'Bulawayo',
+            'Chitungwiza',
+            'Mutare',
+            'Gweru',
+            'Kwekwe',
+            'Kadoma',
+            'Masvingo',
+            'Chinhoyi',
+            'Marondera',
+          ];
+
+      final locations = citiesToQuery
+          .map(
+            (city) => {
+              'q': city,
+              'custom_id': city.toLowerCase().replaceAll(' ', '_'),
+            },
+          )
+          .toList();
+
+      final body = json.encode({'locations': locations});
+
+      final url = '$_baseUrl/current.json?key=$_apiKey&q=bulk';
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+        body: body,
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return _parseBulkWeatherData(data);
+      } else {
+        throw Exception(
+          'Failed to fetch bulk weather data: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      throw Exception('Failed to get bulk weather data: $e');
+    }
+  }
+
+  Weather _parseCurrentWeatherFromWeatherAPI(
     Map<String, dynamic> data,
     String city,
   ) {
-    final current = data['current_weather'];
-    final hourly = data['hourly'];
+    final current = data['current'];
 
     return Weather(
       id: '${city}_${DateTime.now().millisecondsSinceEpoch}',
-      dateTime: DateTime.parse(current['time']),
-      temperature: current['temperature'].toDouble(),
-      humidity: hourly['relative_humidity_2m'][0].toDouble(),
-      windSpeed: current['wind_speed'].toDouble(),
-      condition: _getWeatherCondition(current['weather_code']),
-      description: _getWeatherDescription(current['weather_code']),
-      icon: _getWeatherIcon(current['weather_code']),
-      pressure: 1013.25, // Open-Meteo doesn't provide pressure in free tier
-      visibility: 10.0, // Default visibility
-      precipitation: hourly['precipitation'][0]?.toDouble() ?? 0.0,
+      dateTime: DateTime.parse(current['last_updated']),
+      temperature: current['temp_c'].toDouble(),
+      humidity: current['humidity'].toDouble(),
+      windSpeed: current['wind_kph'].toDouble() / 3.6, // Convert km/h to m/s
+      condition: _getWeatherConditionFromCode(current['condition']['code']),
+      description: current['condition']['text'],
+      icon: _getWeatherIconFromCode(current['condition']['code']),
+      pressure: current['pressure_mb'].toDouble(),
+      visibility: current['vis_km'].toDouble(),
+      precipitation: current['precip_mm']?.toDouble() ?? 0.0,
+      uvIndex: current['uv']?.toDouble(),
+      feelsLike: current['feelslike_c']?.toDouble(),
+      dewPoint: current['dewpoint_c']?.toDouble(),
+      windGust: current['gust_kph']?.toDouble() / 3.6, // Convert km/h to m/s
+      windDegree: current['wind_degree']?.toInt(),
+      windDirection: current['wind_dir'],
+      cloudCover: current['cloud']?.toDouble(),
+      airQuality: current['air_quality'] != null
+          ? AirQuality.fromJson(current['air_quality'])
+          : null,
+      pollenData: current['pollen'] != null
+          ? PollenData.fromJson(current['pollen'])
+          : null,
     );
   }
 
-  WeatherForecast _parseForecastFromOpenMeteo(Map<String, dynamic> data) {
-    final hourly = data['hourly'];
-    final daily = data['daily'];
+  WeatherForecast _parseForecastFromWeatherAPI(Map<String, dynamic> data) {
+    final forecast = data['forecast'];
+    final hourly = forecast['forecastday'][0]['hour'] as List;
+    final daily = forecast['forecastday'] as List;
 
     // Parse hourly forecast (next 24 hours)
     final hourlyWeather = <Weather>[];
-    final times = hourly['time'] as List;
-    final temperatures = hourly['temperature_2m'] as List;
-    final humidities = hourly['relative_humidity_2m'] as List;
-    final windSpeeds = hourly['wind_speed_10m'] as List;
-    final precipitations = hourly['precipitation'] as List;
-    final weatherCodes = hourly['weather_code'] as List;
-
-    for (int i = 0; i < 24 && i < times.length; i++) {
+    for (int i = 0; i < 24 && i < hourly.length; i++) {
+      final hour = hourly[i];
       hourlyWeather.add(
         Weather(
           id: 'hourly_${i}',
-          dateTime: DateTime.parse(times[i]),
-          temperature: temperatures[i].toDouble(),
-          humidity: humidities[i].toDouble(),
-          windSpeed: windSpeeds[i].toDouble(),
-          condition: _getWeatherCondition(weatherCodes[i]),
-          description: _getWeatherDescription(weatherCodes[i]),
-          icon: _getWeatherIcon(weatherCodes[i]),
-          pressure: 1013.25,
-          visibility: 10.0,
-          precipitation: precipitations[i]?.toDouble() ?? 0.0,
+          dateTime: DateTime.parse(hour['time']),
+          temperature: hour['temp_c'].toDouble(),
+          humidity: hour['humidity'].toDouble(),
+          windSpeed: hour['wind_kph'].toDouble() / 3.6, // Convert km/h to m/s
+          condition: _getWeatherConditionFromCode(hour['condition']['code']),
+          description: hour['condition']['text'],
+          icon: _getWeatherIconFromCode(hour['condition']['code']),
+          pressure: hour['pressure_mb'].toDouble(),
+          visibility: hour['vis_km'].toDouble(),
+          precipitation: hour['precip_mm']?.toDouble() ?? 0.0,
         ),
       );
     }
 
     // Parse daily forecast (next 7 days)
     final dailyWeather = <Weather>[];
-    final dailyTimes = daily['time'] as List;
-    final dailyMaxTemps = daily['temperature_2m_max'] as List;
-    final dailyMinTemps = daily['temperature_2m_min'] as List;
-    final dailyPrecipitations = daily['precipitation_sum'] as List;
-    final dailyWeatherCodes = daily['weather_code'] as List;
-
-    for (int i = 0; i < 7 && i < dailyTimes.length; i++) {
+    for (int i = 0; i < daily.length; i++) {
+      final day = daily[i]['day'];
+      final date = daily[i]['date'];
       dailyWeather.add(
         Weather(
           id: 'daily_${i}',
-          dateTime: DateTime.parse(dailyTimes[i]),
+          dateTime: DateTime.parse(date),
           temperature:
-              (dailyMaxTemps[i].toDouble() + dailyMinTemps[i].toDouble()) / 2,
-          humidity: 60.0, // Default humidity for daily forecast
-          windSpeed: 5.0, // Default wind speed
-          condition: _getWeatherCondition(dailyWeatherCodes[i]),
-          description: _getWeatherDescription(dailyWeatherCodes[i]),
-          icon: _getWeatherIcon(dailyWeatherCodes[i]),
-          pressure: 1013.25,
-          visibility: 10.0,
-          precipitation: dailyPrecipitations[i]?.toDouble() ?? 0.0,
+              (day['maxtemp_c'].toDouble() + day['mintemp_c'].toDouble()) / 2,
+          humidity: day['avghumidity'].toDouble(),
+          windSpeed: day['maxwind_kph'].toDouble() / 3.6, // Convert km/h to m/s
+          condition: _getWeatherConditionFromCode(day['condition']['code']),
+          description: day['condition']['text'],
+          icon: _getWeatherIconFromCode(day['condition']['code']),
+          pressure: 1013.25, // WeatherAPI doesn't provide daily pressure
+          visibility: 10.0, // WeatherAPI doesn't provide daily visibility
+          precipitation: day['totalprecip_mm']?.toDouble() ?? 0.0,
         ),
       );
     }
@@ -194,44 +281,195 @@ class WeatherService {
     return WeatherForecast(hourly: hourlyWeather, daily: dailyWeather);
   }
 
-  String _getWeatherCondition(int weatherCode) {
-    // Open-Meteo weather codes
-    if (weatherCode == 0) return 'clear';
-    if (weatherCode <= 3) return 'cloudy';
-    if (weatherCode <= 48) return 'foggy';
-    if (weatherCode <= 67) return 'rainy';
-    if (weatherCode <= 77) return 'snowy';
-    if (weatherCode <= 82) return 'rainy';
-    if (weatherCode <= 86) return 'snowy';
-    if (weatherCode <= 99) return 'stormy';
+  String _getWeatherConditionFromCode(int weatherCode) {
+    // WeatherAPI condition codes
+    if (weatherCode == 1000) return 'clear';
+    if (weatherCode == 1003) return 'cloudy';
+    if (weatherCode == 1006 || weatherCode == 1009) return 'cloudy';
+    if (weatherCode == 1030 || weatherCode == 1135 || weatherCode == 1147)
+      return 'foggy';
+    if (weatherCode >= 1063 && weatherCode <= 1201) return 'rainy';
+    if (weatherCode >= 1210 && weatherCode <= 1237) return 'snowy';
+    if (weatherCode >= 1240 && weatherCode <= 1264) return 'snowy';
+    if (weatherCode >= 1273 && weatherCode <= 1282) return 'stormy';
     return 'clear';
   }
 
-  String _getWeatherDescription(int weatherCode) {
-    if (weatherCode == 0) return 'Clear sky';
-    if (weatherCode == 1) return 'Mainly clear';
-    if (weatherCode == 2) return 'Partly cloudy';
-    if (weatherCode == 3) return 'Overcast';
-    if (weatherCode <= 48) return 'Foggy';
-    if (weatherCode <= 67) return 'Rainy';
-    if (weatherCode <= 77) return 'Snowy';
-    if (weatherCode <= 82) return 'Rain showers';
-    if (weatherCode <= 86) return 'Snow showers';
-    if (weatherCode <= 99) return 'Thunderstorm';
-    return 'Clear sky';
+  String _getWeatherIconFromCode(int weatherCode) {
+    // WeatherAPI condition codes to OpenWeatherMap icons
+    if (weatherCode == 1000) return '01d'; // Clear
+    if (weatherCode == 1003) return '02d'; // Partly cloudy
+    if (weatherCode == 1006) return '04d'; // Cloudy
+    if (weatherCode == 1009) return '04d'; // Overcast
+    if (weatherCode == 1030 || weatherCode == 1135 || weatherCode == 1147)
+      return '50d'; // Fog
+    if (weatherCode >= 1063 && weatherCode <= 1201) return '10d'; // Rain
+    if (weatherCode >= 1210 && weatherCode <= 1237) return '13d'; // Snow
+    if (weatherCode >= 1240 && weatherCode <= 1264)
+      return '13d'; // Snow showers
+    if (weatherCode >= 1273 && weatherCode <= 1282)
+      return '11d'; // Thunderstorm
+    return '01d';
   }
 
-  String _getWeatherIcon(int weatherCode) {
-    if (weatherCode == 0) return '01d';
-    if (weatherCode == 1) return '02d';
-    if (weatherCode == 2) return '03d';
-    if (weatherCode == 3) return '04d';
-    if (weatherCode <= 48) return '50d';
-    if (weatherCode <= 67) return '10d';
-    if (weatherCode <= 77) return '13d';
-    if (weatherCode <= 82) return '09d';
-    if (weatherCode <= 86) return '13d';
-    if (weatherCode <= 99) return '11d';
-    return '01d';
+  // New parsing methods for additional WeatherAPI.com features
+
+  List<WeatherAlert> _parseWeatherAPIAlerts(Map<String, dynamic> data) {
+    final alerts = <WeatherAlert>[];
+
+    if (data['alerts'] != null && data['alerts']['alert'] != null) {
+      final alertList = data['alerts']['alert'] as List;
+
+      for (final alertData in alertList) {
+        alerts.add(
+          WeatherAlert(
+            id: '${alertData['headline']}_${DateTime.now().millisecondsSinceEpoch}',
+            title: alertData['headline'] ?? '',
+            description: alertData['desc'] ?? '',
+            severity: alertData['severity']?.toLowerCase() ?? 'medium',
+            duration: _calculateDuration(
+              alertData['effective'],
+              alertData['expires'],
+            ),
+            location: alertData['areas'] ?? '',
+            date:
+                DateTime.tryParse(alertData['effective'] ?? '') ??
+                DateTime.now(),
+            icon: _getAlertIcon(alertData['category']),
+            type: alertData['event'] ?? 'weather',
+          ),
+        );
+      }
+    }
+
+    return alerts;
+  }
+
+  List<Weather> _parseHistoricalWeatherFromWeatherAPI(
+    Map<String, dynamic> data,
+  ) {
+    final weatherList = <Weather>[];
+
+    if (data['forecast'] != null && data['forecast']['forecastday'] != null) {
+      final forecastDay = data['forecast']['forecastday'][0];
+      final hourly = forecastDay['hour'] as List;
+
+      for (final hour in hourly) {
+        weatherList.add(
+          Weather(
+            id: 'historical_${hour['time_epoch']}',
+            dateTime: DateTime.parse(hour['time']),
+            temperature: hour['temp_c'].toDouble(),
+            humidity: hour['humidity'].toDouble(),
+            windSpeed: hour['wind_kph'].toDouble() / 3.6,
+            condition: _getWeatherConditionFromCode(hour['condition']['code']),
+            description: hour['condition']['text'],
+            icon: _getWeatherIconFromCode(hour['condition']['code']),
+            pressure: hour['pressure_mb'].toDouble(),
+            visibility: hour['vis_km'].toDouble(),
+            precipitation: hour['precip_mm']?.toDouble() ?? 0.0,
+            uvIndex: hour['uv']?.toDouble(),
+            feelsLike: hour['feelslike_c']?.toDouble(),
+            dewPoint: hour['dewpoint_c']?.toDouble(),
+            windGust: hour['gust_kph']?.toDouble() / 3.6,
+            windDegree: hour['wind_degree']?.toInt(),
+            windDirection: hour['wind_dir'],
+            cloudCover: hour['cloud']?.toDouble(),
+            airQuality: hour['air_quality'] != null
+                ? AirQuality.fromJson(hour['air_quality'])
+                : null,
+            pollenData: hour['pollen'] != null
+                ? PollenData.fromJson(hour['pollen'])
+                : null,
+          ),
+        );
+      }
+    }
+
+    return weatherList;
+  }
+
+  Map<String, Weather> _parseBulkWeatherData(Map<String, dynamic> data) {
+    final weatherMap = <String, Weather>{};
+
+    if (data['bulk'] != null) {
+      final bulkList = data['bulk'] as List;
+
+      for (final item in bulkList) {
+        final query = item['query'];
+        final customId = query['custom_id'] as String;
+        final current = query['current'];
+
+        weatherMap[customId] = Weather(
+          id: '${customId}_${DateTime.now().millisecondsSinceEpoch}',
+          dateTime: DateTime.parse(current['last_updated']),
+          temperature: current['temp_c'].toDouble(),
+          humidity: current['humidity'].toDouble(),
+          windSpeed: current['wind_kph'].toDouble() / 3.6,
+          condition: _getWeatherConditionFromCode(current['condition']['code']),
+          description: current['condition']['text'],
+          icon: _getWeatherIconFromCode(current['condition']['code']),
+          pressure: current['pressure_mb'].toDouble(),
+          visibility: current['vis_km'].toDouble(),
+          precipitation: current['precip_mm']?.toDouble() ?? 0.0,
+          uvIndex: current['uv']?.toDouble(),
+          feelsLike: current['feelslike_c']?.toDouble(),
+          dewPoint: current['dewpoint_c']?.toDouble(),
+          windGust: current['gust_kph']?.toDouble() / 3.6,
+          windDegree: current['wind_degree']?.toInt(),
+          windDirection: current['wind_dir'],
+          cloudCover: current['cloud']?.toDouble(),
+          airQuality: current['air_quality'] != null
+              ? AirQuality.fromJson(current['air_quality'])
+              : null,
+          pollenData: current['pollen'] != null
+              ? PollenData.fromJson(current['pollen'])
+              : null,
+        );
+      }
+    }
+
+    return weatherMap;
+  }
+
+  // Helper methods for WeatherAlert parsing
+
+  String _calculateDuration(String? effective, String? expires) {
+    if (effective == null || expires == null) return 'Unknown';
+
+    try {
+      final effectiveDate = DateTime.parse(effective);
+      final expiresDate = DateTime.parse(expires);
+      final duration = expiresDate.difference(effectiveDate);
+
+      if (duration.inDays > 0) {
+        return '${duration.inDays} day${duration.inDays > 1 ? 's' : ''}';
+      } else if (duration.inHours > 0) {
+        return '${duration.inHours} hour${duration.inHours > 1 ? 's' : ''}';
+      } else {
+        return '${duration.inMinutes} minute${duration.inMinutes > 1 ? 's' : ''}';
+      }
+    } catch (e) {
+      return 'Unknown';
+    }
+  }
+
+  String _getAlertIcon(String? category) {
+    switch (category?.toLowerCase()) {
+      case 'met':
+        return 'weather';
+      case 'fire':
+        return 'fire';
+      case 'flood':
+        return 'water';
+      case 'wind':
+        return 'wind';
+      case 'heat':
+        return 'thermometer';
+      case 'cold':
+        return 'snowflake';
+      default:
+        return 'warning';
+    }
   }
 }

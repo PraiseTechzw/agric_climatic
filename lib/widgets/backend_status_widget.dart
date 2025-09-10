@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../services/firebase_config.dart';
 
@@ -11,29 +12,52 @@ class BackendStatusWidget extends StatefulWidget {
 class _BackendStatusWidgetState extends State<BackendStatusWidget> {
   bool _isConnected = false;
   bool _isLoading = true;
+  Timer? _connectionTimer;
+  bool _isDisposed = false;
 
   @override
   void initState() {
     super.initState();
     _checkConnection();
+    // Set up periodic connection check
+    _connectionTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
+      if (!_isDisposed) {
+        _checkConnection();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _isDisposed = true;
+    _connectionTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _checkConnection() async {
-    setState(() {
-      _isLoading = true;
-    });
+    if (_isDisposed || !mounted) return;
+
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+      });
+    }
 
     try {
       final isConnected = await FirebaseConfig.testConnection();
-      setState(() {
-        _isConnected = isConnected;
-        _isLoading = false;
-      });
+      if (!_isDisposed && mounted) {
+        setState(() {
+          _isConnected = isConnected;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
-      setState(() {
-        _isConnected = false;
-        _isLoading = false;
-      });
+      if (!_isDisposed && mounted) {
+        setState(() {
+          _isConnected = false;
+          _isLoading = false;
+        });
+      }
     }
   }
 

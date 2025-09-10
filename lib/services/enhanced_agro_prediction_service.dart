@@ -277,7 +277,7 @@ class EnhancedAgroPredictionService {
       final response = await _supabase
           .from('weather_data')
           .select()
-          .eq('location', location)
+          .eq('location_name', location)
           .gte('date_time', startDate.toIso8601String())
           .lte('date_time', (endDate ?? DateTime.now()).toIso8601String())
           .order('date_time', ascending: true);
