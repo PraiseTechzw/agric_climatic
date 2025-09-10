@@ -8,7 +8,7 @@ class EnhancedAgroPredictionService {
   final SupabaseClient _supabase = Supabase.instance.client;
 
   // Zimbabwe crop data and climate zones with enhanced data
-  final Map<String, Map<String, dynamic>> _cropData = {
+  static const Map<String, Map<String, dynamic>> _cropData = {
     'maize': {
       'optimal_temp_min': 18.0,
       'optimal_temp_max': 24.0,
@@ -77,7 +77,7 @@ class EnhancedAgroPredictionService {
   };
 
   // Enhanced pest and disease data for Zimbabwe
-  final Map<String, List<Map<String, dynamic>>> _pestDiseaseData = {
+  static const Map<String, List<Map<String, dynamic>>> _pestDiseaseData = {
     'maize': [
       {
         'name': 'Fall Armyworm',
@@ -764,14 +764,6 @@ class EnhancedAgroPredictionService {
     int monthsAhead,
   ) {
     // Implementation for long-term disease risk assessment
-    return 'low';
-  }
-
-  String _assessClimateRisk(
-    Map<String, dynamic> prediction,
-    List<HistoricalWeatherPattern> patterns,
-  ) {
-    // Implementation for climate risk assessment
     return 'low';
   }
 
