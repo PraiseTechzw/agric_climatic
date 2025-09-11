@@ -35,21 +35,11 @@ android {
         multiDexEnabled = true
     }
 
-    signingConfigs {
-        create("release") {
-            // Always use debug signing for GitHub Actions compatibility
-            storeFile = file("debug.keystore")
-            storePassword = "android"
-            keyAlias = "androiddebugkey"
-            keyPassword = "android"
-        }
-    }
-
     buildTypes {
         release {
             isMinifyEnabled = false
             isShrinkResources = false
-            signingConfig = signingConfigs.getByName("release")
+            // No signing config - will use default debug signing
         }
         debug {
             isDebuggable = true
