@@ -30,8 +30,8 @@ android {
         applicationId = "com.agricclimatic.zimbabwe"
         minSdk = flutter.minSdkVersion
         targetSdk = 34
-        versionCode = 7
-        versionName = "1.0.5"
+        versionCode = 8
+        versionName = "1.0.6"
         multiDexEnabled = true
     }
 
