@@ -42,7 +42,7 @@ The workflow file `.github/workflows/build-and-release.yml` is already created a
 
 ### 3. Make Release Script Executable
 
-```bash
+   ```bash
 # Make the release script executable
 chmod +x scripts/release.sh
 ```

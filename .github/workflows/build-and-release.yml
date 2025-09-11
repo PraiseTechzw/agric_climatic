@@ -30,6 +30,14 @@ jobs:
     - name: Get dependencies
       run: flutter pub get
       
+    - name: Setup signing
+      run: |
+        echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/release-key.keystore
+        echo "storePassword=${{ secrets.KEYSTORE_PASSWORD }}" >> android/key.properties
+        echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> android/key.properties
+        echo "keyAlias=agricclimatic" >> android/key.properties
+        echo "storeFile=app/release-key.keystore" >> android/key.properties
+        
     - name: Build APK
       run: flutter build apk --release --split-per-abi
       
