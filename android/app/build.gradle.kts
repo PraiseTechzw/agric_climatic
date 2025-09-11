@@ -8,14 +8,7 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
-import java.util.Properties
-import java.io.FileInputStream
-
-val keystoreProperties = Properties()
-val keystorePropertiesFile = rootProject.file("key.properties")
-if (keystorePropertiesFile.exists()) {
-    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
-}
+// Keystore configuration removed - using debug signing for GitHub Actions
 
 android {
     namespace = "com.example.agric_climatic"
@@ -44,18 +37,11 @@ android {
 
     signingConfigs {
         create("release") {
-            if (keystorePropertiesFile.exists() && file(keystoreProperties["storeFile"] as String).exists()) {
-                keyAlias = keystoreProperties["keyAlias"] as String
-                keyPassword = keystoreProperties["keyPassword"] as String
-                storeFile = file(keystoreProperties["storeFile"] as String)
-                storePassword = keystoreProperties["storePassword"] as String
-            } else {
-                // Fallback to debug keys if key.properties not found or keystore doesn't exist
-                storeFile = file("debug.keystore")
-                storePassword = "android"
-                keyAlias = "androiddebugkey"
-                keyPassword = "android"
-            }
+            // Always use debug signing for GitHub Actions compatibility
+            storeFile = file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
         }
     }
 
