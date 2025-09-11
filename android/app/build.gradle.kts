@@ -44,13 +44,13 @@ android {
 
     signingConfigs {
         create("release") {
-            if (keystorePropertiesFile.exists()) {
+            if (keystorePropertiesFile.exists() && file(keystoreProperties["storeFile"] as String).exists()) {
                 keyAlias = keystoreProperties["keyAlias"] as String
                 keyPassword = keystoreProperties["keyPassword"] as String
                 storeFile = file(keystoreProperties["storeFile"] as String)
                 storePassword = keystoreProperties["storePassword"] as String
             } else {
-                // Fallback to debug keys if key.properties not found
+                // Fallback to debug keys if key.properties not found or keystore doesn't exist
                 storeFile = file("debug.keystore")
                 storePassword = "android"
                 keyAlias = "androiddebugkey"
