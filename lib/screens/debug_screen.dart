@@ -5,6 +5,7 @@ import '../services/logging_service.dart';
 import '../services/performance_service.dart';
 import '../services/firebase_ai_service.dart';
 import '../services/zimbabwe_api_service.dart';
+import '../services/network_service.dart';
 
 class DebugScreen extends StatefulWidget {
   const DebugScreen({super.key});
@@ -359,6 +360,11 @@ class _DebugScreenState extends State<DebugScreen> {
               runSpacing: 8,
               children: [
                 _buildQuickActionButton(
+                  'Test Network',
+                  Icons.wifi,
+                  () => _testSpecificApi('network'),
+                ),
+                _buildQuickActionButton(
                   'Test Weather API',
                   Icons.wb_sunny,
                   () => _testSpecificApi('weather'),
@@ -438,6 +444,9 @@ class _DebugScreenState extends State<DebugScreen> {
     try {
       LoggingService.info('Starting API tests...', tag: 'DEBUG');
 
+      // Test Network Connectivity
+      await _testNetworkConnectivity();
+
       // Test Weather API
       await _testWeatherApi();
 
@@ -454,6 +463,46 @@ class _DebugScreenState extends State<DebugScreen> {
       setState(() {
         _isTestingApis = false;
       });
+    }
+  }
+
+  Future<void> _testNetworkConnectivity() async {
+    final stopwatch = Stopwatch()..start();
+
+    try {
+      final networkInfo = await NetworkService.getNetworkInfo();
+      stopwatch.stop();
+
+      setState(() {
+        _apiTestResults['network'] = {
+          'status': 'success',
+          'response_time_ms': stopwatch.elapsedMilliseconds,
+          'has_internet': networkInfo['has_internet'],
+          'connectivity_status': networkInfo['connectivity_status'],
+          'is_wifi': networkInfo['is_wifi'],
+          'is_mobile': networkInfo['is_mobile'],
+          'timestamp': DateTime.now().toIso8601String(),
+        };
+      });
+
+      LoggingService.info('Network connectivity test successful', tag: 'DEBUG');
+    } catch (e) {
+      stopwatch.stop();
+
+      setState(() {
+        _apiTestResults['network'] = {
+          'status': 'error',
+          'response_time_ms': stopwatch.elapsedMilliseconds,
+          'error': e.toString(),
+          'timestamp': DateTime.now().toIso8601String(),
+        };
+      });
+
+      LoggingService.error(
+        'Network connectivity test failed',
+        tag: 'DEBUG',
+        error: e,
+      );
     }
   }
 
@@ -556,6 +605,9 @@ class _DebugScreenState extends State<DebugScreen> {
 
   Future<void> _testSpecificApi(String apiName) async {
     switch (apiName.toLowerCase()) {
+      case 'network':
+        await _testNetworkConnectivity();
+        break;
       case 'weather':
         await _testWeatherApi();
         break;

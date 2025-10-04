@@ -3,19 +3,25 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../models/weather.dart';
 import '../models/weather_alert.dart';
+import 'network_service.dart';
 
 class WeatherService {
   final SupabaseClient _supabase = Supabase.instance.client;
 
   // WeatherAPI configuration for Zimbabwe
-  static const String _baseUrl = 'http://api.weatherapi.com/v1';
+  static const String _baseUrl = 'https://api.weatherapi.com/v1';
   static const String _apiKey = '4360f911bf30467c85c12953251009';
 
   Future<Weather> getCurrentWeather({String city = 'Harare'}) async {
     try {
+      // Check internet connectivity first
+      if (!await NetworkService.hasInternetConnection()) {
+        throw Exception('No internet connection available');
+      }
+
       final url =
           '$_baseUrl/current.json?key=$_apiKey&q=$city&aqi=yes&pollen=yes';
-      final response = await http.get(Uri.parse(url));
+      final response = await NetworkService.get(url);
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -30,9 +36,14 @@ class WeatherService {
 
   Future<WeatherForecast> getForecast({String city = 'Harare'}) async {
     try {
+      // Check internet connectivity first
+      if (!await NetworkService.hasInternetConnection()) {
+        throw Exception('No internet connection available');
+      }
+
       final url =
           '$_baseUrl/forecast.json?key=$_apiKey&q=$city&days=7&aqi=yes&alerts=yes&pollen=yes';
-      final response = await http.get(Uri.parse(url));
+      final response = await NetworkService.get(url);
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -337,6 +348,14 @@ class WeatherService {
                 DateTime.now(),
             icon: _getAlertIcon(alertData['category']),
             type: alertData['event'] ?? 'weather',
+            startTime:
+                DateTime.tryParse(alertData['effective'] ?? '') ??
+                DateTime.now(),
+            endTime:
+                DateTime.tryParse(alertData['expires'] ?? '') ??
+                DateTime.now().add(const Duration(hours: 24)),
+            isActive: true,
+            recommendations: _generateAlertRecommendations(alertData),
           ),
         );
       }
@@ -471,5 +490,72 @@ class WeatherService {
       default:
         return 'warning';
     }
+  }
+
+  List<String> _generateAlertRecommendations(Map<String, dynamic> alertData) {
+    final category = alertData['category']?.toLowerCase() ?? '';
+    final severity = alertData['severity']?.toLowerCase() ?? 'medium';
+
+    List<String> recommendations = [];
+
+    switch (category) {
+      case 'met':
+        recommendations.addAll([
+          'Monitor weather conditions closely',
+          'Follow official weather updates',
+          'Prepare for changing conditions',
+        ]);
+        break;
+      case 'fire':
+        recommendations.addAll([
+          'Evacuate if ordered',
+          'Avoid outdoor activities',
+          'Close windows and doors',
+        ]);
+        break;
+      case 'flood':
+        recommendations.addAll([
+          'Avoid flooded areas',
+          'Move to higher ground if necessary',
+          'Do not drive through floodwaters',
+        ]);
+        break;
+      case 'wind':
+        recommendations.addAll([
+          'Secure loose objects',
+          'Avoid outdoor activities if possible',
+          'Check for structural damage after the event',
+        ]);
+        break;
+      case 'heat':
+        recommendations.addAll([
+          'Stay hydrated',
+          'Avoid outdoor activities during peak hours',
+          'Use sun protection',
+        ]);
+        break;
+      case 'cold':
+        recommendations.addAll([
+          'Dress warmly in layers',
+          'Protect exposed skin',
+          'Check heating systems',
+        ]);
+        break;
+      default:
+        recommendations.addAll([
+          'Monitor local conditions',
+          'Follow official guidance',
+          'Stay informed about updates',
+        ]);
+    }
+
+    if (severity == 'extreme' || severity == 'severe') {
+      recommendations.insert(
+        0,
+        'Take immediate action - this is a severe weather event',
+      );
+    }
+
+    return recommendations;
   }
 }

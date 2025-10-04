@@ -7,7 +7,6 @@ class AgroClimaticPrediction {
   final double temperature;
   final double humidity;
   final double precipitation;
-  final double soilMoisture;
   final double evapotranspiration;
   final String cropRecommendation;
   final String irrigationAdvice;
@@ -27,7 +26,6 @@ class AgroClimaticPrediction {
     required this.temperature,
     required this.humidity,
     required this.precipitation,
-    required this.soilMoisture,
     required this.evapotranspiration,
     required this.cropRecommendation,
     required this.irrigationAdvice,
@@ -49,7 +47,6 @@ class AgroClimaticPrediction {
       temperature: json['temperature']?.toDouble() ?? 0.0,
       humidity: json['humidity']?.toDouble() ?? 0.0,
       precipitation: json['precipitation']?.toDouble() ?? 0.0,
-      soilMoisture: json['soil_moisture']?.toDouble() ?? 0.0,
       evapotranspiration: json['evapotranspiration']?.toDouble() ?? 0.0,
       cropRecommendation: json['crop_recommendation'] ?? '',
       irrigationAdvice: json['irrigation_advice'] ?? '',
@@ -60,7 +57,9 @@ class AgroClimaticPrediction {
       harvestingAdvice: json['harvesting_advice'] ?? '',
       weatherAlerts: List<String>.from(json['weather_alerts'] ?? []),
       soilConditions: Map<String, dynamic>.from(json['soil_conditions'] ?? {}),
-      climateIndicators: Map<String, dynamic>.from(json['climate_indicators'] ?? {}),
+      climateIndicators: Map<String, dynamic>.from(
+        json['climate_indicators'] ?? {},
+      ),
     );
   }
 
@@ -72,7 +71,6 @@ class AgroClimaticPrediction {
       'temperature': temperature,
       'humidity': humidity,
       'precipitation': precipitation,
-      'soil_moisture': soilMoisture,
       'evapotranspiration': evapotranspiration,
       'crop_recommendation': cropRecommendation,
       'irrigation_advice': irrigationAdvice,
@@ -114,11 +112,6 @@ class AgroClimaticPrediction {
     }
   }
 
-  Color get soilMoistureColor {
-    if (soilMoisture < 30) return Colors.red;
-    if (soilMoisture < 60) return Colors.orange;
-    return Colors.green;
-  }
 
   // Yield prediction color
   Color get yieldColor {

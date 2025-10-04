@@ -13,8 +13,7 @@ class NotificationService {
       FirebaseMessaging.instance;
   static TwilioFlutter? _twilioFlutter;
   static bool _isInitialized = false;
-  static bool _isInitializing = false;
-  static bool _permissionsRequested = false;
+  // Removed unused fields: _isInitializing, _permissionsRequested
 
   // Notification channels
   static const String _weatherChannelId = 'weather_alerts';

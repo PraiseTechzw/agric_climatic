@@ -211,15 +211,6 @@ class SoilDataService {
       recommendations.add('Apply potassium fertilizer (N-P-K: 10-10-20)');
     }
 
-    // Moisture recommendations
-    if (soilData.soilMoisture < 30.0) {
-      recommendations.add(
-        'Irrigate immediately - soil moisture critically low',
-      );
-    } else if (soilData.soilMoisture < 50.0) {
-      recommendations.add('Consider irrigation - soil moisture is low');
-    }
-
     // Drainage recommendations
     if (soilData.drainage == 'Poor') {
       recommendations.add(
@@ -242,7 +233,6 @@ class SoilDataService {
     // Base values for Zimbabwe soil
     double basePh = 6.2 + (random % 20) / 10.0; // 6.2-8.2
     double baseOrganicMatter = 2.5 + (random % 15) / 10.0; // 2.5-4.0%
-    double baseMoisture = 35.0 + (random % 30); // 35-65%
     double baseTemperature = 22.0 + (random % 8); // 22-30°C
 
     // Adjust based on region
@@ -264,8 +254,8 @@ class SoilDataService {
       nitrogen: 40.0 + (random % 30), // 40-70 mg/kg
       phosphorus: 20.0 + (random % 25), // 20-45 mg/kg
       potassium: 150.0 + (random % 100), // 150-250 mg/kg
-      soilMoisture: baseMoisture,
       soilTemperature: baseTemperature,
+      clayContent: 20.0 + (random % 30), // 20-50%
       soilType: _getSoilTypeForRegion(city),
       texture: _getSoilTextureForRegion(city),
       drainage: _getDrainageForRegion(city),

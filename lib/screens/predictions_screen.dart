@@ -498,15 +498,6 @@ class _PredictionsScreenState extends State<PredictionsScreen> {
               children: [
                 Expanded(
                   child: _buildConditionItem(
-                    'Moisture',
-                    '${prediction.soilMoisture.toStringAsFixed(1)}%',
-                    prediction.soilMoistureColor,
-                    Icons.water_drop,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: _buildConditionItem(
                     'pH Level',
                     '${prediction.soilConditions['ph_level']}',
                     Colors.green,
@@ -795,15 +786,6 @@ class _PredictionsScreenState extends State<PredictionsScreen> {
                 ),
               ),
               const SizedBox(width: 16),
-              Expanded(
-                child: _buildSummaryMetric(
-                  'Soil Moisture',
-                  '${prediction.soilMoisture.toStringAsFixed(1)}%',
-                  'Current level',
-                  Colors.brown,
-                  Icons.terrain,
-                ),
-              ),
             ],
           ),
           const SizedBox(height: 16),

@@ -10,12 +10,18 @@ import 'services/offline_service.dart';
 import 'services/performance_service.dart';
 import 'services/notification_service.dart';
 import 'screens/splash_screen.dart';
+import 'screens/auth_screen.dart';
 import 'screens/weather_screen.dart';
+import 'screens/weather_forecast_screen.dart';
+import 'screens/weather_alerts_screen.dart';
 import 'screens/predictions_screen.dart';
+import 'screens/crop_recommendations_screen.dart';
+import 'screens/irrigation_schedule_screen.dart';
 import 'screens/analytics_screen.dart';
 import 'screens/soil_data_screen.dart';
 import 'screens/notifications_screen.dart';
 import 'screens/ai_insights_screen.dart';
+import 'screens/help_screen.dart';
 import 'screens/debug_screen.dart';
 import 'providers/weather_provider.dart';
 import 'providers/notification_provider.dart';
@@ -144,10 +150,15 @@ class _MainScreenState extends State<MainScreen> {
 
   final List<Widget> _screens = [
     const WeatherScreen(),
+    const WeatherForecastScreen(),
+    const WeatherAlertsScreen(),
     const PredictionsScreen(),
+    const CropRecommendationsScreen(),
+    const IrrigationScheduleScreen(),
     const AnalyticsScreen(),
     const SoilDataScreen(),
     const AIInsightsScreen(),
+    const HelpScreen(),
     if (EnvironmentService.enableDebugMenu) const DebugScreen(),
   ];
 
@@ -167,6 +178,7 @@ class _MainScreenState extends State<MainScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       extendBody: true,
+      drawer: _buildDrawer(context),
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -266,12 +278,12 @@ class _MainScreenState extends State<MainScreen> {
                   ),
                   child: Icon(
                     _selectedIndex == 1
-                        ? Icons.analytics
-                        : Icons.analytics_outlined,
+                        ? Icons.calendar_today
+                        : Icons.calendar_today_outlined,
                     size: 24,
                   ),
                 ),
-                label: 'Predictions',
+                label: 'Forecast',
               ),
               BottomNavigationBarItem(
                 icon: Container(
@@ -284,12 +296,12 @@ class _MainScreenState extends State<MainScreen> {
                   ),
                   child: Icon(
                     _selectedIndex == 2
-                        ? Icons.trending_up
-                        : Icons.trending_up_outlined,
+                        ? Icons.warning
+                        : Icons.warning_outlined,
                     size: 24,
                   ),
                 ),
-                label: 'Analytics',
+                label: 'Alerts',
               ),
               BottomNavigationBarItem(
                 icon: Container(
@@ -302,12 +314,12 @@ class _MainScreenState extends State<MainScreen> {
                   ),
                   child: Icon(
                     _selectedIndex == 3
-                        ? Icons.terrain
-                        : Icons.terrain_outlined,
+                        ? Icons.analytics
+                        : Icons.analytics_outlined,
                     size: 24,
                   ),
                 ),
-                label: 'Soil',
+                label: 'Predictions',
               ),
               BottomNavigationBarItem(
                 icon: Container(
@@ -320,35 +332,135 @@ class _MainScreenState extends State<MainScreen> {
                   ),
                   child: Icon(
                     _selectedIndex == 4
-                        ? Icons.psychology
-                        : Icons.psychology_outlined,
+                        ? Icons.agriculture
+                        : Icons.agriculture_outlined,
                     size: 24,
                   ),
                 ),
-                label: 'AI Insights',
+                label: 'Crops',
               ),
-              if (EnvironmentService.enableDebugMenu)
-                BottomNavigationBarItem(
-                  icon: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: _selectedIndex == 5
-                          ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(
-                      _selectedIndex == 5
-                          ? Icons.bug_report
-                          : Icons.bug_report_outlined,
-                      size: 24,
-                    ),
-                  ),
-                  label: 'Debug',
-                ),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildDrawer(BuildContext context) {
+    return Drawer(
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          DrawerHeader(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Theme.of(context).colorScheme.primary,
+                  Theme.of(context).colorScheme.secondary,
+                ],
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.agriculture, size: 48, color: Colors.white),
+                const SizedBox(height: 8),
+                Text(
+                  'AgriClimatic',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  'Agricultural Climate Prediction',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(color: Colors.white70),
+                ),
+              ],
+            ),
+          ),
+          _buildDrawerItem(context, 'Weather', Icons.wb_sunny, 0),
+          _buildDrawerItem(
+            context,
+            'Weather Forecast',
+            Icons.calendar_today,
+            1,
+          ),
+          _buildDrawerItem(context, 'Weather Alerts', Icons.warning, 2),
+          _buildDrawerItem(context, 'Predictions', Icons.analytics, 3),
+          _buildDrawerItem(
+            context,
+            'Crop Recommendations',
+            Icons.agriculture,
+            4,
+          ),
+          _buildDrawerItem(context, 'Irrigation Schedule', Icons.water_drop, 5),
+          _buildDrawerItem(context, 'Analytics', Icons.trending_up, 6),
+          _buildDrawerItem(context, 'Soil Data', Icons.terrain, 7),
+          _buildDrawerItem(context, 'AI Insights', Icons.psychology, 8),
+          _buildDrawerItem(context, 'Help & Support', Icons.help, 9),
+          if (EnvironmentService.enableDebugMenu)
+            _buildDrawerItem(context, 'Debug Console', Icons.bug_report, 10),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.logout),
+            title: const Text('Sign Out'),
+            onTap: () {
+              Navigator.pop(context);
+              _showSignOutDialog(context);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDrawerItem(
+    BuildContext context,
+    String title,
+    IconData icon,
+    int index,
+  ) {
+    return ListTile(
+      leading: Icon(icon),
+      title: Text(title),
+      selected: _selectedIndex == index,
+      selectedTileColor: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+      onTap: () {
+        Navigator.pop(context);
+        setState(() {
+          _selectedIndex = index;
+        });
+      },
+    );
+  }
+
+  void _showSignOutDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Sign Out'),
+        content: const Text('Are you sure you want to sign out?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              // Add sign out logic here
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(builder: (context) => const AuthScreen()),
+              );
+            },
+            child: const Text('Sign Out'),
+          ),
+        ],
       ),
     );
   }

@@ -88,7 +88,6 @@ class AgroClimaticProvider with ChangeNotifier {
           temperature: prediction.temperature,
           humidity: prediction.humidity,
           precipitation: prediction.precipitation,
-          soilMoisture: prediction.soilMoisture,
           evapotranspiration: prediction.evapotranspiration,
           cropRecommendation: '$cropType: ${prediction.cropRecommendation}',
           irrigationAdvice: prediction.irrigationAdvice,
@@ -278,13 +277,11 @@ class AgroClimaticProvider with ChangeNotifier {
     double totalRainfall = 0;
     double totalTemperature = 0;
     double totalHumidity = 0;
-    double totalSoilMoisture = 0;
 
     for (final prediction in _predictions) {
       totalRainfall += prediction.precipitation;
       totalTemperature += prediction.temperature;
       totalHumidity += prediction.humidity;
-      totalSoilMoisture += prediction.soilMoisture;
     }
 
     final count = _predictions.length.toDouble();
@@ -293,7 +290,6 @@ class AgroClimaticProvider with ChangeNotifier {
       'rainfall': totalRainfall / count,
       'temperature': totalTemperature / count,
       'humidity': totalHumidity / count,
-      'soilMoisture': totalSoilMoisture / count,
     };
   }
 
@@ -312,8 +308,6 @@ class AgroClimaticProvider with ChangeNotifier {
       'temperature':
           _getTrend(firstAvg['temperature']!, secondAvg['temperature']!),
       'humidity': _getTrend(firstAvg['humidity']!, secondAvg['humidity']!),
-      'soilMoisture':
-          _getTrend(firstAvg['soilMoisture']!, secondAvg['soilMoisture']!),
     };
   }
 
@@ -324,13 +318,11 @@ class AgroClimaticProvider with ChangeNotifier {
     double totalRainfall = 0;
     double totalTemperature = 0;
     double totalHumidity = 0;
-    double totalSoilMoisture = 0;
 
     for (final prediction in predictions) {
       totalRainfall += prediction.precipitation;
       totalTemperature += prediction.temperature;
       totalHumidity += prediction.humidity;
-      totalSoilMoisture += prediction.soilMoisture;
     }
 
     final count = predictions.length.toDouble();
@@ -339,7 +331,6 @@ class AgroClimaticProvider with ChangeNotifier {
       'rainfall': totalRainfall / count,
       'temperature': totalTemperature / count,
       'humidity': totalHumidity / count,
-      'soilMoisture': totalSoilMoisture / count,
     };
   }
 

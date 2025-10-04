@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../services/soil_data_service.dart';
 import '../models/soil_data.dart';
+import '../providers/weather_provider.dart';
 
 class SoilDataScreen extends StatefulWidget {
   const SoilDataScreen({super.key});
@@ -28,10 +30,22 @@ class _SoilDataScreenState extends State<SoilDataScreen> {
     });
 
     try {
-      // For now, use mock coordinates - in production, get from location service
+      final weatherProvider = Provider.of<WeatherProvider>(
+        context,
+        listen: false,
+      );
+
+      double latitude = -17.8252; // Harare default
+      double longitude = 31.0335;
+
+      if (weatherProvider.locationService.currentPosition != null) {
+        latitude = weatherProvider.locationService.currentPosition!.latitude;
+        longitude = weatherProvider.locationService.currentPosition!.longitude;
+      }
+
       final soilData = await _soilService.getSoilData(
-        latitude: -17.8252, // Harare, Zimbabwe
-        longitude: 31.0335,
+        latitude: latitude,
+        longitude: longitude,
       );
 
       setState(() {
@@ -547,28 +561,12 @@ class _SoilDataScreenState extends State<SoilDataScreen> {
             ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: _buildConditionItem(
-                  'Soil Moisture',
-                  '${soilData.soilMoisture.toStringAsFixed(1)}%',
-                  soilData.moistureDescription,
-                  _getMoistureColor(soilData.soilMoisture),
-                  Icons.water_drop,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _buildConditionItem(
-                  'Temperature',
-                  '${soilData.soilTemperature.toStringAsFixed(1)}°C',
-                  'Soil Temp',
-                  Colors.red,
-                  Icons.thermostat,
-                ),
-              ),
-            ],
+          _buildConditionItem(
+            'Temperature',
+            '${soilData.soilTemperature.toStringAsFixed(1)}°C',
+            'Soil Temp',
+            Colors.red,
+            Icons.thermostat,
           ),
         ],
       ),
@@ -840,13 +838,6 @@ class _SoilDataScreenState extends State<SoilDataScreen> {
       default:
         return Colors.grey;
     }
-  }
-
-  Color _getMoistureColor(double moisture) {
-    if (moisture < 30) return Colors.red;
-    if (moisture < 50) return Colors.orange;
-    if (moisture < 70) return Colors.green;
-    return Colors.blue;
   }
 
   String _formatDateTime(DateTime dateTime) {

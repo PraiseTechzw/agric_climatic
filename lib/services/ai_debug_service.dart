@@ -119,9 +119,8 @@ Please provide:
 Format as a structured analysis with specific recommendations.
 ''';
 
-      // For now, return mock response since we can't access private members
-      // In a real implementation, you would expose a public method in FirebaseAIService
-      final response = await _generateMockAIResponse(prompt);
+      // Use actual AI service for performance recommendations
+      final response = await FirebaseAIService.instance.generateContent(prompt);
 
       final diagnosis = _parseDiagnosis(response['text'] ?? '');
 
@@ -180,9 +179,8 @@ Focus on:
 Provide specific, actionable recommendations with priority levels and expected impact.
 ''';
 
-      // For now, return mock response since we can't access private members
-      // In a real implementation, you would expose a public method in FirebaseAIService
-      final response = await _generateMockAIResponse(prompt);
+      // Use actual AI service for performance recommendations
+      final response = await FirebaseAIService.instance.generateContent(prompt);
 
       final recommendations = _parsePerformanceRecommendations(
         response['text'] ?? '',
@@ -241,9 +239,8 @@ Each scenario should include:
 Format as a structured list of test scenarios.
 ''';
 
-      // For now, return mock response since we can't access private members
-      // In a real implementation, you would expose a public method in FirebaseAIService
-      final response = await _generateMockAIResponse(prompt);
+      // Use actual AI service for performance recommendations
+      final response = await FirebaseAIService.instance.generateContent(prompt);
 
       final scenarios = _parseTestScenarios(response['text'] ?? '');
 
@@ -303,9 +300,8 @@ Focus on:
 Provide specific suggestions with code examples where applicable.
 ''';
 
-      // For now, return mock response since we can't access private members
-      // In a real implementation, you would expose a public method in FirebaseAIService
-      final response = await _generateMockAIResponse(prompt);
+      // Use actual AI service for performance recommendations
+      final response = await FirebaseAIService.instance.generateContent(prompt);
 
       final suggestions = _parseCodeReviewSuggestions(response['text'] ?? '');
 
@@ -335,17 +331,6 @@ Provide specific suggestions with code examples where applicable.
   }
 
   // Private helper methods
-  Future<Map<String, dynamic>> _generateMockAIResponse(String prompt) async {
-    // Mock AI response for development
-    await Future.delayed(
-      const Duration(seconds: 1),
-    ); // Simulate AI processing time
-
-    return {
-      'text': 'Mock AI response for: ${prompt.substring(0, 50)}...',
-      'timestamp': DateTime.now().toIso8601String(),
-    };
-  }
 
   Future<Map<String, dynamic>> _gatherSystemMetrics() async {
     return {

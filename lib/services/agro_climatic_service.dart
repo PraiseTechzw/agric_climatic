@@ -122,7 +122,6 @@ class AgroPredictionService {
         temperature: prediction['temperature'] ?? 0.0,
         humidity: prediction['humidity'] ?? 0.0,
         precipitation: prediction['precipitation'] ?? 0.0,
-        soilMoisture: prediction['soil_moisture'] ?? 0.0,
         evapotranspiration: prediction['evapotranspiration'] ?? 0.0,
         cropRecommendation: cropRecommendation,
         irrigationAdvice: _generateIrrigationAdvice(prediction),
@@ -278,7 +277,6 @@ class AgroPredictionService {
                   (seasonalAdjustment['precipitation'] as double) +
                   dailyVariation['precipitation']!)
               .clamp(0.0, 50.0),
-      'soil_moisture': _calculateSoilMoisture(basePrecipitation, baseHumidity),
       'evapotranspiration': _calculateEvapotranspiration(
         baseTemp,
         baseHumidity,
@@ -423,6 +421,13 @@ class AgroPredictionService {
           date: DateTime.now(),
           icon: 'warning',
           type: 'weather',
+          startTime: DateTime.now(),
+          endTime: DateTime.now().add(const Duration(hours: 24)),
+          isActive: true,
+          recommendations: [
+            'Monitor conditions closely',
+            'Take necessary precautions',
+          ],
         );
         await NotificationService.sendWeatherAlert(
           title: weatherAlert.title,
@@ -435,17 +440,12 @@ class AgroPredictionService {
   }
 
   String _generateIrrigationAdvice(Map<String, dynamic> prediction) {
-    final soilMoisture = prediction['soil_moisture'] ?? 0.0;
     final precipitation = prediction['precipitation'] ?? 0.0;
 
-    if (soilMoisture < 30) {
-      return 'Immediate irrigation required - soil moisture critically low';
-    } else if (soilMoisture < 50) {
-      return 'Irrigation recommended within 24 hours';
-    } else if (precipitation > 5) {
+    if (precipitation > 5) {
       return 'No irrigation needed - sufficient rainfall expected';
     } else {
-      return 'Monitor soil moisture - irrigation may be needed soon';
+      return 'Monitor soil conditions - irrigation may be needed soon';
     }
   }
 
@@ -484,15 +484,13 @@ class AgroPredictionService {
   }
 
   Map<String, dynamic> _assessSoilConditions(Map<String, dynamic> prediction) {
-    final soilMoisture = prediction['soil_moisture'] ?? 0.0;
     final temp = prediction['temperature'] ?? 0.0;
 
     return {
-      'moisture_level': soilMoisture,
       'temperature': temp,
       'ph_level': 6.5, // Default pH
-      'nutrient_status': soilMoisture > 50 ? 'good' : 'poor',
-      'drainage': soilMoisture > 80 ? 'poor' : 'good',
+      'nutrient_status': 'good',
+      'drainage': 'good',
     };
   }
 
@@ -622,10 +620,6 @@ class AgroPredictionService {
         'precipitation': 0.5,
       }; // Spring
     }
-  }
-
-  double _calculateSoilMoisture(double precipitation, double humidity) {
-    return (precipitation * 2 + humidity * 0.3).clamp(0.0, 100.0);
   }
 
   double _calculateEvapotranspiration(double temperature, double humidity) {

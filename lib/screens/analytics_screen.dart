@@ -77,72 +77,6 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     }
   }
 
-  Future<void> _generateSampleData() async {
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
-
-    try {
-      // Generate sample weather patterns for demonstration
-      final samplePatterns = _generateSamplePatterns();
-
-      setState(() {
-        _patterns = samplePatterns;
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _error = e.toString();
-        _isLoading = false;
-      });
-    }
-  }
-
-  List<HistoricalWeatherPattern> _generateSamplePatterns() {
-    final patterns = <HistoricalWeatherPattern>[];
-    final seasons = ['Spring', 'Summer', 'Autumn', 'Winter'];
-    final patternTypes = [
-      'hot_wet',
-      'hot_dry',
-      'cool_wet',
-      'cool_dry',
-      'moderate',
-    ];
-
-    for (int i = 0; i < 4; i++) {
-      final random = DateTime.now().millisecondsSinceEpoch + i;
-      final season = seasons[i];
-      final patternType = patternTypes[random % patternTypes.length];
-
-      patterns.add(
-        HistoricalWeatherPattern(
-          id: 'sample_${season.toLowerCase()}_${DateTime.now().millisecondsSinceEpoch}',
-          location: 'Sample Location',
-          season: season,
-          patternType: patternType,
-          averageTemperature: 20.0 + (random % 20) - 10, // 10-30°C
-          totalPrecipitation: (random % 200) + 50, // 50-250mm
-          averageHumidity: 40.0 + (random % 40), // 40-80%
-          anomalies: random % 3 == 0
-              ? ['Temperature spike', 'Unusual rainfall']
-              : [],
-          trends: {
-            'temperature': (random % 10 - 5) / 10.0, // -0.5 to 0.5
-            'precipitation': (random % 10 - 5) / 10.0,
-            'humidity': (random % 10 - 5) / 10.0,
-          },
-          summary:
-              'Sample ${season.toLowerCase()} weather pattern showing typical ${patternType.replaceAll('_', ' ')} conditions for this region.',
-          startDate: DateTime.now().subtract(Duration(days: (i + 1) * 90)),
-          endDate: DateTime.now().subtract(Duration(days: i * 90)),
-        ),
-      );
-    }
-
-    return patterns;
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -366,18 +300,6 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Theme.of(context).colorScheme.primary,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 12,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                OutlinedButton.icon(
-                  onPressed: _generateSampleData,
-                  icon: const Icon(Icons.science),
-                  label: const Text('Generate Sample'),
-                  style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 24,
                       vertical: 12,

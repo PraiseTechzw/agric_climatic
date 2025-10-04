@@ -2,12 +2,13 @@ class SoilData {
   final String id;
   final String location;
   final double ph;
+  final double phLevel; // alias for ph
   final double organicMatter; // percentage
   final double nitrogen; // mg/kg
   final double phosphorus; // mg/kg
   final double potassium; // mg/kg
-  final double soilMoisture; // percentage
   final double soilTemperature; // Celsius
+  final double clayContent; // percentage
   final String soilType;
   final String drainage;
   final String texture;
@@ -21,13 +22,13 @@ class SoilData {
     required this.nitrogen,
     required this.phosphorus,
     required this.potassium,
-    required this.soilMoisture,
     required this.soilTemperature,
+    required this.clayContent,
     required this.soilType,
     required this.drainage,
     required this.texture,
     required this.lastUpdated,
-  });
+  }) : phLevel = ph;
 
   factory SoilData.fromJson(Map<String, dynamic> json) {
     return SoilData(
@@ -38,8 +39,8 @@ class SoilData {
       nitrogen: (json['nitrogen'] ?? 0.0).toDouble(),
       phosphorus: (json['phosphorus'] ?? 0.0).toDouble(),
       potassium: (json['potassium'] ?? 0.0).toDouble(),
-      soilMoisture: (json['soil_moisture'] ?? 0.0).toDouble(),
       soilTemperature: (json['soil_temperature'] ?? 0.0).toDouble(),
+      clayContent: (json['clay_content'] ?? 0.0).toDouble(),
       soilType: json['soil_type'] ?? '',
       drainage: json['drainage'] ?? '',
       texture: json['texture'] ?? '',
@@ -58,7 +59,6 @@ class SoilData {
       'nitrogen': nitrogen,
       'phosphorus': phosphorus,
       'potassium': potassium,
-      'soil_moisture': soilMoisture,
       'soil_temperature': soilTemperature,
       'soil_type': soilType,
       'drainage': drainage,
@@ -83,15 +83,6 @@ class SoilData {
     if (ph < 7.5) return 'green';
     if (ph < 8.5) return 'blue';
     return 'purple';
-  }
-
-  // Get soil moisture description
-  String get moistureDescription {
-    if (soilMoisture < 20) return 'Very Dry';
-    if (soilMoisture < 40) return 'Dry';
-    if (soilMoisture < 60) return 'Optimal';
-    if (soilMoisture < 80) return 'Moist';
-    return 'Wet';
   }
 
   // Get nutrient level descriptions

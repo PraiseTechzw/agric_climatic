@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/weather_provider.dart';
 import '../models/soil_data.dart';
 import '../services/agro_prediction_service.dart';
+import '../services/soil_data_service.dart';
 
 class AIInsightsScreen extends StatefulWidget {
   const AIInsightsScreen({super.key});
@@ -13,6 +14,7 @@ class AIInsightsScreen extends StatefulWidget {
 
 class _AIInsightsScreenState extends State<AIInsightsScreen> {
   final AgroPredictionService _predictionService = AgroPredictionService();
+  final SoilDataService _soilService = SoilDataService();
   Map<String, dynamic>? _aiInsights;
   Map<String, dynamic>? _weatherAnalysis;
   bool _isLoading = false;
@@ -62,28 +64,14 @@ class _AIInsightsScreenState extends State<AIInsightsScreen> {
       final currentWeather = weatherProvider.currentWeather;
 
       if (currentWeather != null) {
-        // Create sample soil data
-        final soilData = SoilData(
-          id: '${_selectedLocation}_soil_${DateTime.now().millisecondsSinceEpoch}',
-          location: _selectedLocation,
-          ph: 6.5,
-          organicMatter: 2.5,
-          nitrogen: 15.0,
-          phosphorus: 8.0,
-          potassium: 120.0,
-          soilMoisture: 65.0,
-          soilTemperature: currentWeather.temperature,
-          soilType: 'Loam',
-          drainage: 'Good',
-          texture: 'Medium',
-          lastUpdated: DateTime.now(),
-        );
+        // Get soil data from service
+        final soilData = await _getSoilData(_selectedLocation);
 
         // Get AI insights
         final insights = await _predictionService.getAIInsights(
           location: _selectedLocation,
           currentWeather: currentWeather,
-          soilData: soilData,
+          soilData: soilData!,
           crop: _selectedCrop,
           growthStage: _selectedGrowthStage,
         );
@@ -590,5 +578,40 @@ class _AIInsightsScreenState extends State<AIInsightsScreen> {
         ],
       ),
     );
+  }
+
+  Future<SoilData?> _getSoilData(String location) async {
+    try {
+      // Get coordinates for the location
+      final coordinates = _getLocationCoordinates(location);
+      return await _soilService.getSoilData(
+        latitude: coordinates['latitude']!,
+        longitude: coordinates['longitude']!,
+      );
+    } catch (e) {
+      print('Error getting soil data: $e');
+      return null;
+    }
+  }
+
+  Map<String, double> _getLocationCoordinates(String location) {
+    // Return coordinates for major Zimbabwean cities
+    switch (location.toLowerCase()) {
+      case 'harare':
+        return {'latitude': -17.8252, 'longitude': 31.0335};
+      case 'bulawayo':
+        return {'latitude': -20.1569, 'longitude': 28.5891};
+      case 'gweru':
+        return {'latitude': -19.4500, 'longitude': 29.8167};
+      case 'mutare':
+        return {'latitude': -18.9707, 'longitude': 32.6722};
+      case 'kwekwe':
+        return {'latitude': -18.9281, 'longitude': 29.8149};
+      default:
+        return {
+          'latitude': -17.8252,
+          'longitude': 31.0335,
+        }; // Default to Harare
+    }
   }
 }

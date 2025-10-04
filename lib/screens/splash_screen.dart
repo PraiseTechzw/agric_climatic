@@ -1,8 +1,8 @@
-import 'package:agric_climatic/main.dart';
 import 'package:flutter/material.dart';
 import '../services/app_icon_service.dart';
 import '../services/logging_service.dart';
 import '../services/environment_service.dart';
+import 'auth_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -92,10 +92,10 @@ class _SplashScreenState extends State<SplashScreen>
       // Wait a bit before navigating
       await Future.delayed(const Duration(milliseconds: 500));
 
-      // Navigate to main screen
+      // Navigate to auth screen
       if (mounted) {
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const MainScreen()),
+          MaterialPageRoute(builder: (context) => const AuthScreen()),
         );
       }
     } catch (e) {

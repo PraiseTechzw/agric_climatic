@@ -122,7 +122,6 @@ Current Weather:
 - Wind Speed: ${currentWeather.windSpeed} km/h
 
 Soil Conditions:
-- Moisture: ${soilData.soilMoisture}%
 - Temperature: ${soilData.soilTemperature}°C
 - pH Level: ${soilData.ph}
 - Nutrient Status: ${soilData.getSoilHealth()}
@@ -291,7 +290,6 @@ Current Conditions:
 - Temperature: ${currentWeather.temperature}°C
 - Humidity: ${currentWeather.humidity}%
 - Precipitation: ${currentWeather.precipitation}mm
-- Soil Moisture: ${soilData.soilMoisture}%
 - Soil Temperature: ${soilData.soilTemperature}°C
 - Growth Stage: $growthStage
 
@@ -322,7 +320,6 @@ Format as structured advice with specific measurements and schedules.
           'crop': crop,
           'growth_stage': growthStage,
           'location': location,
-          'soil_moisture': soilData.soilMoisture,
           'temperature': currentWeather.temperature,
         },
         responseData: result,
@@ -514,6 +511,31 @@ Format as structured market analysis with specific recommendations.
     };
   }
 
+  /// Generate content using the AI model
+  Future<Map<String, dynamic>> generateContent(String prompt) async {
+    if (!_isInitialized) {
+      await initialize();
+    }
+
+    try {
+      final response = await _agriculturalModel.generateContent([
+        Content.text(prompt),
+      ]);
+
+      return {
+        'text': response.text ?? '',
+        'timestamp': DateTime.now().toIso8601String(),
+      };
+    } catch (e) {
+      LoggingService.error('Content generation failed', tag: 'AI', error: e);
+      return {
+        'text': 'Error generating content: $e',
+        'timestamp': DateTime.now().toIso8601String(),
+        'error': true,
+      };
+    }
+  }
+
   /// Test AI service connectivity and functionality
   Future<Map<String, dynamic>> testService() async {
     final stopwatch = Stopwatch()..start();
@@ -661,8 +683,8 @@ Format as structured market analysis with specific recommendations.
           nitrogen: 15.0,
           phosphorus: 8.0,
           potassium: 120.0,
-          soilMoisture: 50.0,
           soilTemperature: 22.0,
+          clayContent: 25.0,
           soilType: 'Loam',
           drainage: 'Good',
           texture: 'Medium',

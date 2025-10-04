@@ -129,31 +129,23 @@ class _DebugConsoleWidgetState extends State<DebugConsoleWidget>
   }
 
   void _loadRecentLogs() {
-    // Simulate loading recent logs
+    // Load actual logs from logging service
     setState(() {
-      _logs = [
-        LogEntry(
-          timestamp: DateTime.now().subtract(const Duration(minutes: 5)),
-          level: LogLevel.info,
-          service: 'API',
-          message: 'Weather data fetched successfully for Harare',
-          data: {'city': 'Harare', 'temperature': 25.5},
-        ),
-        LogEntry(
-          timestamp: DateTime.now().subtract(const Duration(minutes: 3)),
-          level: LogLevel.debug,
-          service: 'AI',
-          message: 'AI crop recommendation generated',
-          data: {'crop': 'Maize', 'confidence': 0.85},
-        ),
-        LogEntry(
-          timestamp: DateTime.now().subtract(const Duration(minutes: 1)),
-          level: LogLevel.warning,
-          service: 'API',
-          message: 'Slow API response detected',
-          data: {'endpoint': '/forecast', 'duration': 2500},
-        ),
-      ];
+      final logData = LoggingService.getRecentLogs(limit: 10);
+      _logs = logData
+          .map(
+            (log) => LogEntry(
+              timestamp: DateTime.parse(log['timestamp']),
+              level: LogLevel.values.firstWhere(
+                (level) => level.name == log['level'],
+                orElse: () => LogLevel.info,
+              ),
+              service: log['service'] ?? 'Unknown',
+              message: log['message'] ?? '',
+              data: log['data'] ?? {},
+            ),
+          )
+          .toList();
     });
   }
 

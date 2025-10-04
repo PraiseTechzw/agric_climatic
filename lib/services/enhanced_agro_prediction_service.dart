@@ -7,114 +7,9 @@ import 'logging_service.dart';
 class EnhancedAgroPredictionService {
   final SupabaseClient _supabase = Supabase.instance.client;
 
-  // Zimbabwe crop data and climate zones with enhanced data
-  static const Map<String, Map<String, dynamic>> _cropData = {
-    'maize': {
-      'optimal_temp_min': 18.0,
-      'optimal_temp_max': 24.0,
-      'optimal_humidity_min': 60.0,
-      'optimal_humidity_max': 80.0,
-      'water_requirement': 500.0,
-      'growing_period': 120,
-      'soil_ph_min': 5.5,
-      'soil_ph_max': 7.0,
-      'zones': ['Highveld', 'Middleveld', 'Lowveld'],
-      'planting_seasons': ['October', 'November', 'December'],
-      'harvest_seasons': ['March', 'April', 'May'],
-    },
-    'wheat': {
-      'optimal_temp_min': 15.0,
-      'optimal_temp_max': 20.0,
-      'optimal_humidity_min': 50.0,
-      'optimal_humidity_max': 70.0,
-      'water_requirement': 400.0,
-      'growing_period': 150,
-      'soil_ph_min': 6.0,
-      'soil_ph_max': 7.5,
-      'zones': ['Highveld'],
-      'planting_seasons': ['May', 'June'],
-      'harvest_seasons': ['October', 'November'],
-    },
-    'sorghum': {
-      'optimal_temp_min': 20.0,
-      'optimal_temp_max': 30.0,
-      'optimal_humidity_min': 40.0,
-      'optimal_humidity_max': 60.0,
-      'water_requirement': 300.0,
-      'growing_period': 100,
-      'soil_ph_min': 5.0,
-      'soil_ph_max': 8.0,
-      'zones': ['Lowveld', 'Middleveld'],
-      'planting_seasons': ['November', 'December'],
-      'harvest_seasons': ['March', 'April'],
-    },
-    'cotton': {
-      'optimal_temp_min': 21.0,
-      'optimal_temp_max': 30.0,
-      'optimal_humidity_min': 50.0,
-      'optimal_humidity_max': 70.0,
-      'water_requirement': 600.0,
-      'growing_period': 180,
-      'soil_ph_min': 5.5,
-      'soil_ph_max': 7.0,
-      'zones': ['Lowveld', 'Middleveld'],
-      'planting_seasons': ['October', 'November'],
-      'harvest_seasons': ['April', 'May'],
-    },
-    'tobacco': {
-      'optimal_temp_min': 20.0,
-      'optimal_temp_max': 28.0,
-      'optimal_humidity_min': 60.0,
-      'optimal_humidity_max': 80.0,
-      'water_requirement': 400.0,
-      'growing_period': 120,
-      'soil_ph_min': 5.5,
-      'soil_ph_max': 6.5,
-      'zones': ['Highveld', 'Middleveld'],
-      'planting_seasons': ['September', 'October'],
-      'harvest_seasons': ['February', 'March'],
-    },
-  };
+  // Zimbabwe crop data and climate zones - removed unused field
 
-  // Enhanced pest and disease data for Zimbabwe
-  static const Map<String, List<Map<String, dynamic>>> _pestDiseaseData = {
-    'maize': [
-      {
-        'name': 'Fall Armyworm',
-        'scientific_name': 'Spodoptera frugiperda',
-        'risk_factors': ['high_temp', 'high_humidity', 'drought_stress'],
-        'symptoms': ['Leaf damage', 'Stunted growth', 'Yield loss'],
-        'prevention': [
-          'Early planting',
-          'Crop rotation',
-          'Resistant varieties',
-        ],
-        'treatment': [
-          'Biological control',
-          'Chemical pesticides',
-          'Cultural practices',
-        ],
-      },
-      {
-        'name': 'Maize Stalk Borer',
-        'scientific_name': 'Busseola fusca',
-        'risk_factors': ['low_temp', 'high_humidity'],
-        'symptoms': ['Stalk damage', 'Lodging', 'Reduced yield'],
-        'prevention': ['Early planting', 'Crop rotation'],
-        'treatment': ['Chemical control', 'Biological control'],
-      },
-    ],
-    'wheat': [
-      {
-        'name': 'Wheat Rust',
-        'scientific_name': 'Puccinia spp.',
-        'risk_factors': ['high_humidity', 'moderate_temp'],
-        'symptoms': ['Orange pustules', 'Leaf damage', 'Yield loss'],
-        'prevention': ['Resistant varieties', 'Crop rotation'],
-        'treatment': ['Fungicides', 'Cultural practices'],
-      },
-    ],
-  };
+  // Enhanced pest and disease data for Zimbabwe - removed unused field
 
   // Long-term prediction (3-12 months ahead)
   Future<AgroClimaticPrediction> generateLongTermPrediction({
@@ -196,7 +91,6 @@ class EnhancedAgroPredictionService {
         temperature: prediction['temperature'] ?? 0.0,
         humidity: prediction['humidity'] ?? 0.0,
         precipitation: prediction['precipitation'] ?? 0.0,
-        soilMoisture: prediction['soil_moisture'] ?? 0.0,
         evapotranspiration: prediction['evapotranspiration'] ?? 0.0,
         cropRecommendation: cropRecommendation,
         irrigationAdvice: _generateLongTermIrrigationAdvice(

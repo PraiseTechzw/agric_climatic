@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/weather.dart';
 import '../models/soil_data.dart';
+import 'network_service.dart';
 
 class ZimbabweApiService {
   // Open-Meteo API endpoints (free, no API key required)
@@ -35,21 +36,25 @@ class ZimbabweApiService {
   // Get current weather for Zimbabwe cities
   static Future<Weather> getCurrentWeather(String city) async {
     try {
+      // Check internet connectivity first
+      if (!await NetworkService.hasInternetConnection()) {
+        throw Exception('No internet connection available');
+      }
+
       final coords = _zimbabweCities[city];
       if (coords == null) {
         throw Exception('City not found: $city');
       }
 
-      final response = await http.get(
-        Uri.parse(
+      final url =
           '$_openMeteoForecastUrl?'
           'latitude=${coords['lat']}&'
           'longitude=${coords['lon']}&'
           'current_weather=true&'
           'hourly=temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m&'
-          'timezone=Africa/Harare',
-        ),
-      );
+          'timezone=Africa/Harare';
+
+      final response = await NetworkService.get(url);
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -194,8 +199,8 @@ class ZimbabweApiService {
           nitrogen: 15.0, // Typical nitrogen content
           phosphorus: 8.0, // Typical phosphorus content
           potassium: 120.0, // Typical potassium content
-          soilMoisture: 45.0, // Estimated soil moisture
           soilTemperature: 22.0, // Estimated soil temperature
+          clayContent: 25.0, // Typical clay content for Zimbabwe
           soilType: 'Loam', // Common soil type in Zimbabwe
           drainage: 'Good', // Typical drainage
           texture: 'Medium', // Typical texture
@@ -582,7 +587,6 @@ class ZimbabweApiService {
       );
 
       // Estimate soil moisture based on clay content and season
-      final soilMoisture = _estimateSoilMoisture(clayContent, city);
 
       // Estimate soil temperature based on location and season
       final soilTemperature = _estimateSoilTemperature(city);
@@ -595,8 +599,8 @@ class ZimbabweApiService {
         nitrogen: nitrogen,
         phosphorus: phosphorus,
         potassium: potassium,
-        soilMoisture: soilMoisture,
         soilTemperature: soilTemperature,
+        clayContent: clayContent,
         soilType: _classifySoilType(clayContent, sandContent, siltContent),
         texture: _classifySoilTexture(clayContent, sandContent, siltContent),
         drainage: _classifyDrainage(clayContent, sandContent),
@@ -623,24 +627,6 @@ class ZimbabweApiService {
     } catch (e) {
       return fallback;
     }
-  }
-
-  // Estimate soil moisture based on clay content and location
-  static double _estimateSoilMoisture(double clayContent, String city) {
-    // Base moisture on clay content (clay holds more water)
-    double baseMoisture = 30.0 + (clayContent * 0.8);
-
-    // Adjust for Zimbabwe's seasonal patterns
-    final month = DateTime.now().month;
-    if (month >= 11 || month <= 3) {
-      // Wet season (Nov-Mar)
-      baseMoisture += 20.0;
-    } else if (month >= 4 && month <= 6) {
-      // Dry season (Apr-Jun)
-      baseMoisture -= 15.0;
-    }
-
-    return baseMoisture.clamp(10.0, 80.0);
   }
 
   // Estimate soil temperature based on location and season
@@ -721,8 +707,8 @@ class ZimbabweApiService {
       nitrogen: 50.0,
       phosphorus: 25.0,
       potassium: 180.0,
-      soilMoisture: 45.0,
       soilTemperature: 24.0,
+      clayContent: 25.0,
       soilType: 'Loam',
       texture: 'Medium',
       drainage: 'Good',

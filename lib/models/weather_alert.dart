@@ -10,6 +10,10 @@ class WeatherAlert {
   final DateTime date;
   final String icon;
   final String type;
+  final DateTime startTime;
+  final DateTime endTime;
+  final bool isActive;
+  final List<String> recommendations;
 
   WeatherAlert({
     required this.id,
@@ -21,6 +25,10 @@ class WeatherAlert {
     required this.date,
     required this.icon,
     required this.type,
+    required this.startTime,
+    required this.endTime,
+    required this.isActive,
+    required this.recommendations,
   });
 
   factory WeatherAlert.fromJson(Map<String, dynamic> json) {
@@ -34,6 +42,10 @@ class WeatherAlert {
       date: DateTime.parse(json['date']),
       icon: json['icon'],
       type: json['type'],
+      startTime: DateTime.parse(json['startTime']),
+      endTime: DateTime.parse(json['endTime']),
+      isActive: json['isActive'] ?? false,
+      recommendations: List<String>.from(json['recommendations'] ?? []),
     );
   }
 

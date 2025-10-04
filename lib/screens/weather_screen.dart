@@ -732,16 +732,6 @@ class _WeatherScreenState extends State<WeatherScreen> {
                     ),
                   ),
                   const SizedBox(width: 16),
-                  Expanded(
-                    child: _buildSoilMetric(
-                      context,
-                      'Moisture',
-                      '${soilData.soilMoisture.toStringAsFixed(1)}%',
-                      soilData.moistureDescription,
-                      _getMoistureColor(soilData.soilMoisture),
-                      Icons.water_drop,
-                    ),
-                  ),
                 ],
               ),
               const SizedBox(height: 16),
@@ -831,12 +821,6 @@ class _WeatherScreenState extends State<WeatherScreen> {
     return Colors.purple;
   }
 
-  Color _getMoistureColor(double moisture) {
-    if (moisture < 30) return Colors.red;
-    if (moisture < 50) return Colors.orange;
-    if (moisture < 70) return Colors.green;
-    return Colors.blue;
-  }
 
   IconData _getWeatherIcon(String condition) {
     switch (condition.toLowerCase()) {

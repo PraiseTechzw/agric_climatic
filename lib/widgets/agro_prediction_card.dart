@@ -133,16 +133,6 @@ class AgroPredictionCard extends StatelessWidget {
                   _getPrecipitationColor(prediction.precipitation),
                 ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildWeatherItem(
-                  context,
-                  'Soil Moisture',
-                  '${prediction.soilMoisture.toStringAsFixed(1)}%',
-                  Icons.terrain,
-                  prediction.soilMoistureColor,
-                ),
-              ),
             ],
           ),
         ],
