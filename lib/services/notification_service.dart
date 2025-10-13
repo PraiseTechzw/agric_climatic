@@ -1,17 +1,21 @@
+import 'dart:io' show Platform;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:timezone/timezone.dart' as tz;
-import 'package:twilio_flutter/twilio_flutter.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'logging_service.dart';
+import 'user_profile_service.dart';
+import 'environment_service.dart';
 
 class NotificationService {
   static final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
   static final FirebaseMessaging _firebaseMessaging =
       FirebaseMessaging.instance;
-  static TwilioFlutter? _twilioFlutter;
+  // Infobip uses simple HTTPS; no SDK needed
   static bool _isInitialized = false;
   // Removed unused fields: _isInitializing, _permissionsRequested
 
@@ -33,15 +37,7 @@ class NotificationService {
       // Request permissions
       await _requestPermissions();
 
-      // Initialize Twilio (you'll need to add your credentials)
-      _twilioFlutter = TwilioFlutter(
-        accountSid:
-            'YOUR_TWILIO_ACCOUNT_SID', // Replace with your Twilio Account SID
-        authToken:
-            'YOUR_TWILIO_AUTH_TOKEN', // Replace with your Twilio Auth Token
-        twilioNumber:
-            'YOUR_TWILIO_PHONE_NUMBER', // Replace with your Twilio phone number
-      );
+      // Infobip requires no init beyond having API key and base URL
 
       _isInitialized = true;
       LoggingService.info('Notification service initialized');
@@ -78,85 +74,106 @@ class NotificationService {
   }
 
   static Future<void> _initializeFirebaseMessaging() async {
-    // Request permission for notifications
-    final settings = await _firebaseMessaging.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
+    // Only request FCM permission on iOS/macOS; Android grants at install time
+    try {
+      if (Platform.isIOS || Platform.isMacOS) {
+        final settings = await _firebaseMessaging.requestPermission(
+          alert: true,
+          badge: true,
+          sound: true,
+        );
 
-    if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-      LoggingService.info('Firebase messaging permission granted');
-    } else {
-      LoggingService.warning('Firebase messaging permission denied');
+        if (settings.authorizationStatus == AuthorizationStatus.authorized) {
+          LoggingService.info('Firebase messaging permission granted');
+        } else {
+          LoggingService.warning('Firebase messaging permission denied');
+        }
+      }
+    } catch (e) {
+      // Ignore duplicate permission requests
+      LoggingService.warning(
+        'Firebase messaging permission request skipped',
+        extra: {'error': e.toString()},
+      );
     }
 
     // Handle background messages
-    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
     // Handle foreground messages
     FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
   }
 
   static Future<void> _createNotificationChannels() async {
-    const weatherChannel = AndroidNotificationChannel(
-      _weatherChannelId,
-      'Weather Alerts',
-      description: 'Notifications for weather alerts and warnings',
-      importance: Importance.high,
-      playSound: true,
-    );
+    if (Platform.isAndroid) {
+      const weatherChannel = AndroidNotificationChannel(
+        _weatherChannelId,
+        'Weather Alerts',
+        description: 'Notifications for weather alerts and warnings',
+        importance: Importance.high,
+        playSound: true,
+      );
 
-    const agroChannel = AndroidNotificationChannel(
-      _agroChannelId,
-      'Agricultural Recommendations',
-      description: 'Notifications for farming recommendations and advice',
-      importance: Importance.high,
-      playSound: true,
-    );
+      const agroChannel = AndroidNotificationChannel(
+        _agroChannelId,
+        'Agricultural Recommendations',
+        description: 'Notifications for farming recommendations and advice',
+        importance: Importance.high,
+        playSound: true,
+      );
 
-    const systemChannel = AndroidNotificationChannel(
-      _systemChannelId,
-      'System Notifications',
-      description: 'General system notifications',
-      importance: Importance.defaultImportance,
-      playSound: false,
-    );
+      const systemChannel = AndroidNotificationChannel(
+        _systemChannelId,
+        'System Notifications',
+        description: 'General system notifications',
+        importance: Importance.defaultImportance,
+        playSound: false,
+      );
 
-    await _localNotifications
-        .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin
-        >()
-        ?.createNotificationChannel(weatherChannel);
+      final androidPlugin = _localNotifications
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >();
 
-    await _localNotifications
-        .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin
-        >()
-        ?.createNotificationChannel(agroChannel);
-
-    await _localNotifications
-        .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin
-        >()
-        ?.createNotificationChannel(systemChannel);
+      if (androidPlugin != null) {
+        await androidPlugin.createNotificationChannel(weatherChannel);
+        await androidPlugin.createNotificationChannel(agroChannel);
+        await androidPlugin.createNotificationChannel(systemChannel);
+      }
+    }
   }
 
   static Future<void> _requestPermissions() async {
-    // Request notification permission
-    final notificationStatus = await Permission.notification.request();
-    if (notificationStatus.isGranted) {
-      LoggingService.info('Notification permission granted');
-    } else {
-      LoggingService.warning('Notification permission denied');
-    }
+    try {
+      // Request notification permission
+      final notificationStatus = await Permission.notification.status;
+      if (notificationStatus.isDenied) {
+        final result = await Permission.notification.request();
+        if (result.isGranted) {
+          LoggingService.info('Notification permission granted');
+        } else {
+          LoggingService.warning('Notification permission denied');
+        }
+      } else if (notificationStatus.isGranted) {
+        LoggingService.info('Notification permission already granted');
+      }
 
-    // Request SMS permission
-    final smsStatus = await Permission.sms.request();
-    if (smsStatus.isGranted) {
-      LoggingService.info('SMS permission granted');
-    } else {
-      LoggingService.warning('SMS permission denied');
+      // Request SMS permission (only on Android)
+      if (Platform.isAndroid) {
+        final smsStatus = await Permission.sms.status;
+        if (smsStatus.isDenied) {
+          final result = await Permission.sms.request();
+          if (result.isGranted) {
+            LoggingService.info('SMS permission granted');
+          } else {
+            LoggingService.warning('SMS permission denied');
+          }
+        } else if (smsStatus.isGranted) {
+          LoggingService.info('SMS permission already granted');
+        }
+      }
+    } catch (e) {
+      LoggingService.error('Error requesting permissions', error: e);
     }
   }
 
@@ -166,8 +183,18 @@ class NotificationService {
     required String message,
     required String severity,
     required String location,
+    bool sendSmsIfCritical = true,
   }) async {
     try {
+      LoggingService.info(
+        'Dispatching weather alert',
+        extra: {
+          'title': title,
+          'severity': severity,
+          'location': location,
+          'sendSmsIfCritical': sendSmsIfCritical,
+        },
+      );
       // Send push notification
       await _sendLocalNotification(
         title: '🌦️ Weather Alert: $title',
@@ -176,12 +203,19 @@ class NotificationService {
         priority: _getPriorityFromSeverity(severity),
       );
 
-      // Send SMS for critical alerts
+      // Send SMS for critical alerts - ALWAYS send for high/critical/severe
       if (severity.toLowerCase() == 'high' ||
-          severity.toLowerCase() == 'critical') {
+          severity.toLowerCase() == 'critical' ||
+          severity.toLowerCase() == 'severe') {
+        LoggingService.info('Attempting SMS send for critical alert');
         await _sendSMS(
           message:
               'AgriClimatic Alert: $title - $message (Location: $location)',
+        );
+      } else {
+        LoggingService.info(
+          'SMS not sent - severity not critical enough',
+          extra: {'severity': severity},
         );
       }
 
@@ -305,13 +339,15 @@ class NotificationService {
     required Priority priority,
     Map<String, dynamic>? data,
   }) async {
-    const androidDetails = AndroidNotificationDetails(
-      'agric_climatic',
-      'AgriClimatic Notifications',
-      channelDescription: 'Notifications for agricultural climate predictions',
-      importance: Importance.high,
-      priority: Priority.high,
+    final androidDetails = AndroidNotificationDetails(
+      channelId,
+      _getChannelName(channelId),
+      channelDescription: _getChannelDescription(channelId),
+      importance: _getImportanceFromPriority(priority),
+      priority: priority,
       showWhen: true,
+      playSound: true,
+      enableVibration: true,
     );
 
     const iosDetails = DarwinNotificationDetails(
@@ -320,7 +356,7 @@ class NotificationService {
       presentSound: true,
     );
 
-    const notificationDetails = NotificationDetails(
+    final notificationDetails = NotificationDetails(
       android: androidDetails,
       iOS: iosDetails,
     );
@@ -330,37 +366,96 @@ class NotificationService {
       title,
       body,
       notificationDetails,
-      payload: data != null ? data.toString() : null,
+      payload: data?.toString(),
     );
   }
 
-  // Send SMS using Twilio
+  // Send SMS using Infobip
   static Future<void> _sendSMS({
     required String message,
     String? phoneNumber,
   }) async {
     try {
-      if (_twilioFlutter == null) {
-        LoggingService.warning('Twilio not initialized, skipping SMS');
+      LoggingService.info('Preparing SMS send');
+      // Use saved user phone if not provided
+      final recipientNumber = phoneNumber ?? await _getDefaultUserPhone();
+      if (recipientNumber == null || recipientNumber.isEmpty) {
+        LoggingService.warning('No recipient phone available, skipping SMS');
+        return;
+      }
+      LoggingService.info(
+        'Resolved recipient number',
+        extra: {'to': recipientNumber},
+      );
+
+      // Send via Infobip
+      final baseUrl = EnvironmentService.infobipBaseUrl;
+      final apiKey = EnvironmentService.infobipApiKey;
+      final from = EnvironmentService.infobipFrom;
+      if (baseUrl.isEmpty || apiKey.isEmpty) {
+        LoggingService.warning(
+          'Infobip not configured, skipping SMS',
+          extra: {
+            'baseUrlEmpty': baseUrl.isEmpty,
+            'apiKeyEmpty': apiKey.isEmpty,
+          },
+        );
         return;
       }
 
-      // Use a default phone number if none provided
-      final recipientNumber =
-          phoneNumber ??
-          '+263XXXXXXXXX'; // Replace with default Zimbabwe number
+      final url = Uri.parse('$baseUrl/sms/2/text/advanced');
+      final body = {
+        'messages': [
+          {
+            'destinations': [
+              {'to': recipientNumber},
+            ],
+            'from': from.isNotEmpty ? from : 'ServiceSMS',
+            'text': message,
+          },
+        ],
+      };
 
-      // Send SMS using Twilio
-      await _twilioFlutter!.sendSMS(
-        toNumber: recipientNumber,
-        messageBody: message,
+      // Debug log (without sensitive apiKey)
+      LoggingService.info(
+        'Sending Infobip SMS...',
+        extra: {
+          'url': url.toString(),
+          'to': recipientNumber,
+          'from': from.isEmpty ? '(default)' : from,
+          'message_len': message.length,
+        },
       );
 
-      LoggingService.info('SMS sent successfully via Twilio');
-    } catch (e) {
-      LoggingService.error('Failed to send SMS via Twilio', error: e);
+      final resp = await http.post(
+        url,
+        headers: {
+          'Authorization': 'App $apiKey',
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode(body),
+      );
 
-      // Fallback to SMS app if Twilio fails
+      if (resp.statusCode >= 200 && resp.statusCode < 300) {
+        LoggingService.info(
+          'SMS sent successfully via Infobip',
+          extra: {
+            'status': resp.statusCode,
+            // Infobip returns JSON body with messageId(s); include for tracing
+            'response': resp.body,
+          },
+        );
+      } else {
+        LoggingService.error(
+          'Infobip SMS send failed',
+          extra: {'status': resp.statusCode, 'body': resp.body},
+        );
+      }
+    } catch (e) {
+      LoggingService.error('Failed to send SMS via Infobip', error: e);
+
+      // Fallback to SMS app if Infobip fails
       try {
         final uri = Uri(scheme: 'sms', queryParameters: {'body': message});
         if (await canLaunchUrl(uri)) {
@@ -370,6 +465,36 @@ class NotificationService {
       } catch (fallbackError) {
         LoggingService.error('SMS fallback also failed', error: fallbackError);
       }
+    }
+  }
+
+  static Future<String?> _getDefaultUserPhone() async {
+    try {
+      final profile = await UserProfileService.getCurrentUserProfile();
+      String? phone = profile?['phone_e164'] as String?;
+
+      // Ensure phone number has +263 prefix for Zimbabwe
+      if (phone != null && phone.isNotEmpty) {
+        // Remove any spaces and format properly
+        phone = phone.replaceAll(' ', '');
+
+        // If it doesn't start with +263, add it
+        if (!phone.startsWith('+263')) {
+          if (phone.startsWith('263')) {
+            phone = '+$phone';
+          } else if (phone.startsWith('0')) {
+            // Remove leading 0 and add +263
+            phone = '+263${phone.substring(1)}';
+          } else {
+            // Add +263 prefix
+            phone = '+263$phone';
+          }
+        }
+      }
+
+      return phone;
+    } catch (_) {
+      return null;
     }
   }
 
@@ -386,6 +511,48 @@ class NotificationService {
         return Priority.low;
       default:
         return Priority.high;
+    }
+  }
+
+  // Get channel name from channel ID
+  static String _getChannelName(String channelId) {
+    switch (channelId) {
+      case _weatherChannelId:
+        return 'Weather Alerts';
+      case _agroChannelId:
+        return 'Agricultural Recommendations';
+      case _systemChannelId:
+        return 'System Notifications';
+      default:
+        return 'AgriClimatic Notifications';
+    }
+  }
+
+  // Get channel description from channel ID
+  static String _getChannelDescription(String channelId) {
+    switch (channelId) {
+      case _weatherChannelId:
+        return 'Notifications for weather alerts and warnings';
+      case _agroChannelId:
+        return 'Notifications for farming recommendations and advice';
+      case _systemChannelId:
+        return 'General system notifications';
+      default:
+        return 'Notifications for agricultural climate predictions';
+    }
+  }
+
+  // Get importance from priority
+  static Importance _getImportanceFromPriority(Priority priority) {
+    switch (priority) {
+      case Priority.max:
+        return Importance.max;
+      case Priority.high:
+        return Importance.high;
+      case Priority.low:
+        return Importance.low;
+      default:
+        return Importance.defaultImportance;
     }
   }
 
@@ -426,28 +593,14 @@ class NotificationService {
     }
   }
 
-  // Background message handler
-  static Future<void> _firebaseMessagingBackgroundHandler(
-    RemoteMessage message,
-  ) async {
-    LoggingService.info(
-      'Background message received',
-      extra: {
-        'title': message.notification?.title,
-        'body': message.notification?.body,
-        'data': message.data,
-      },
-    );
-  }
-
   // Schedule recurring notifications
   static Future<void> scheduleRecurringNotifications() async {
     try {
-      // Schedule daily weather summary
-      await _scheduleDailyWeatherSummary();
+      // Schedule daily weather and recommendations at 06:30
+      await _scheduleDailyWeatherAndRecommendations();
 
-      // Schedule weekly agro recommendations
-      await _scheduleWeeklyAgroRecommendations();
+      // Schedule weekly SMS summary every Monday at 06:30
+      await _scheduleWeeklySMSSummary();
 
       // Schedule monthly pattern analysis
       await _scheduleMonthlyPatternAnalysis();
@@ -461,18 +614,20 @@ class NotificationService {
     }
   }
 
-  static Future<void> _scheduleDailyWeatherSummary() async {
-    // Schedule for 7:00 AM daily
+  static Future<void> _scheduleDailyWeatherAndRecommendations() async {
+    // Schedule for 06:30 AM daily
     await _localNotifications.zonedSchedule(
       1,
-      'Daily Weather Summary',
-      'Check today\'s weather conditions and farming recommendations',
-      _nextInstanceOfTime(7, 0),
+      'Daily Weather & Recommendations',
+      'Today\'s weather conditions and farming recommendations',
+      _nextInstanceOfTime(6, 30),
       const NotificationDetails(
         android: AndroidNotificationDetails(
           'daily_weather',
-          'Daily Weather Summary',
-          channelDescription: 'Daily weather summary notifications',
+          'Daily Weather & Recommendations',
+          channelDescription: 'Daily weather and recommendation notifications',
+          importance: Importance.high,
+          priority: Priority.high,
         ),
       ),
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
@@ -480,18 +635,20 @@ class NotificationService {
     );
   }
 
-  static Future<void> _scheduleWeeklyAgroRecommendations() async {
-    // Schedule for Monday 8:00 AM
+  static Future<void> _scheduleWeeklySMSSummary() async {
+    // Schedule for Monday 06:30 AM - Weekly SMS Summary
     await _localNotifications.zonedSchedule(
       2,
-      'Weekly Agricultural Recommendations',
-      'Your weekly farming recommendations and crop advice',
-      _nextInstanceOfTime(8, 0, DateTime.monday),
+      'Weekly SMS Summary',
+      'Sending weekly weather and recommendation summary via SMS',
+      _nextInstanceOfTime(6, 30, DateTime.monday),
       const NotificationDetails(
         android: AndroidNotificationDetails(
-          'weekly_agro',
-          'Weekly Agricultural Recommendations',
-          channelDescription: 'Weekly agricultural recommendations',
+          'weekly_sms',
+          'Weekly SMS Summary',
+          channelDescription: 'Weekly SMS summary notifications',
+          importance: Importance.high,
+          priority: Priority.high,
         ),
       ),
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
@@ -594,4 +751,150 @@ class NotificationService {
     final status = await Permission.notification.request();
     return status.isGranted;
   }
+
+  // Send weekly SMS summary
+  static Future<void> sendWeeklySMSSummary({
+    required String location,
+    required Map<String, dynamic> weeklyWeatherData,
+    required List<String> weeklyRecommendations,
+  }) async {
+    try {
+      final message = _buildWeeklySMSMessage(
+        location,
+        weeklyWeatherData,
+        weeklyRecommendations,
+      );
+
+      await _sendSMS(message: message);
+
+      LoggingService.info(
+        'Weekly SMS summary sent',
+        extra: {'location': location, 'message_length': message.length},
+      );
+    } catch (e) {
+      LoggingService.error('Failed to send weekly SMS summary', error: e);
+    }
+  }
+
+  // Send daily weather and recommendations
+  static Future<void> sendDailyWeatherAndRecommendations({
+    required String location,
+    required Map<String, dynamic> weatherData,
+    required List<String> recommendations,
+  }) async {
+    try {
+      // Send notification
+      await sendSystemNotification(
+        title: 'Daily Weather & Recommendations',
+        message: _buildDailyNotificationMessage(weatherData, recommendations),
+      );
+
+      LoggingService.info(
+        'Daily weather and recommendations sent',
+        extra: {'location': location},
+      );
+    } catch (e) {
+      LoggingService.error(
+        'Failed to send daily weather and recommendations',
+        error: e,
+      );
+    }
+  }
+
+  // Build weekly SMS message
+  static String _buildWeeklySMSMessage(
+    String location,
+    Map<String, dynamic> weeklyWeatherData,
+    List<String> recommendations,
+  ) {
+    final buffer = StringBuffer();
+    buffer.writeln('AgriClimatic Weekly Summary - $location');
+    buffer.writeln('Week of ${DateTime.now().toString().split(' ')[0]}');
+    buffer.writeln('');
+
+    // Weather summary
+    buffer.writeln('WEATHER SUMMARY:');
+    buffer.writeln(
+      'Avg Temp: ${weeklyWeatherData['avgTemp']?.toStringAsFixed(1) ?? 'N/A'}°C',
+    );
+    buffer.writeln(
+      'Total Rain: ${weeklyWeatherData['totalRain']?.toStringAsFixed(1) ?? 'N/A'}mm',
+    );
+    buffer.writeln(
+      'Max Wind: ${weeklyWeatherData['maxWind']?.toStringAsFixed(1) ?? 'N/A'}km/h',
+    );
+    buffer.writeln('');
+
+    // Recommendations
+    buffer.writeln('KEY RECOMMENDATIONS:');
+    for (int i = 0; i < recommendations.length && i < 5; i++) {
+      buffer.writeln('• ${recommendations[i]}');
+    }
+
+    buffer.writeln('');
+    buffer.writeln('For detailed info, check the AgriClimatic app.');
+
+    return buffer.toString();
+  }
+
+  // Build daily notification message
+  static String _buildDailyNotificationMessage(
+    Map<String, dynamic> weatherData,
+    List<String> recommendations,
+  ) {
+    final temp = weatherData['temperature']?.toStringAsFixed(1) ?? 'N/A';
+    final rain = weatherData['precipitation']?.toStringAsFixed(1) ?? 'N/A';
+    final topRecommendation = recommendations.isNotEmpty
+        ? recommendations.first
+        : 'Check app for details';
+
+    return 'Today: $temp°C, ${rain}mm rain. Top tip: $topRecommendation';
+  }
+
+  // Test notification system
+  static Future<void> testNotificationSystem() async {
+    try {
+      LoggingService.info('Testing notification system...');
+
+      // Test system notification
+      await sendSystemNotification(
+        title: 'Test Notification',
+        message: 'This is a test notification to verify the system is working.',
+      );
+
+      // Test weather alert
+      await sendWeatherAlert(
+        title: 'Test Weather Alert',
+        message: 'This is a test weather alert.',
+        severity: 'high',
+        location: 'Test Location',
+        sendSmsIfCritical: true,
+      );
+
+      // Test agro recommendation
+      await sendAgroRecommendation(
+        title: 'Test Recommendation',
+        message: 'This is a test agricultural recommendation.',
+        cropType: 'Maize',
+        location: 'Test Location',
+      );
+
+      LoggingService.info('Notification system test completed successfully');
+    } catch (e) {
+      LoggingService.error('Notification system test failed', error: e);
+    }
+  }
+}
+
+// Top-level function for Firebase background message handling
+@pragma('vm:entry-point')
+Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  LoggingService.info(
+    'Background message received',
+    extra: {
+      'title': message.notification?.title,
+      'body': message.notification?.body,
+      'data': message.data,
+    },
+  );
 }

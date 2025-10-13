@@ -6,6 +6,9 @@ import '../services/performance_service.dart';
 import '../services/firebase_ai_service.dart';
 import '../services/zimbabwe_api_service.dart';
 import '../services/network_service.dart';
+import '../services/auth_test_service.dart';
+import '../providers/auth_provider.dart';
+import 'package:provider/provider.dart';
 
 class DebugScreen extends StatefulWidget {
   const DebugScreen({super.key});
@@ -17,7 +20,7 @@ class DebugScreen extends StatefulWidget {
 class _DebugScreenState extends State<DebugScreen> {
   bool _isInitialized = false;
   Map<String, dynamic> _systemInfo = {};
-  Map<String, dynamic> _apiTestResults = {};
+  final Map<String, dynamic> _apiTestResults = {};
   bool _isTestingApis = false;
 
   @override
@@ -156,6 +159,8 @@ class _DebugScreenState extends State<DebugScreen> {
         children: [
           _buildSystemInfoCard(),
           const SizedBox(height: 16),
+          _buildAuthTestCard(),
+          const SizedBox(height: 16),
           _buildApiTestCard(),
           const SizedBox(height: 16),
           _buildDebugConsoleCard(),
@@ -212,6 +217,139 @@ class _DebugScreenState extends State<DebugScreen> {
         ),
       ),
     );
+  }
+
+  Widget _buildAuthTestCard() {
+    return Consumer<AuthProvider>(
+      builder: (context, authProvider, child) {
+        return Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.security, color: Theme.of(context).primaryColor),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Authentication Status',
+                      style: Theme.of(
+                        context,
+                      ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                    ),
+                    const Spacer(),
+                    ElevatedButton(
+                      onPressed: _testAuthentication,
+                      child: const Text('Test Auth'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                _buildAuthStatusRow('Authenticated', authProvider.isAuthenticated),
+                _buildAuthStatusRow('Anonymous', authProvider.isAnonymous),
+                _buildAuthStatusRow('Loading', authProvider.isLoading),
+                if (authProvider.user != null) ...[
+                  _buildAuthStatusRow('User ID', authProvider.user!.uid),
+                  _buildAuthStatusRow('Email', authProvider.user!.email ?? 'N/A'),
+                  _buildAuthStatusRow('Email Verified', authProvider.user!.emailVerified),
+                ],
+                if (authProvider.errorMessage != null) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      'Error: ${authProvider.errorMessage}',
+                      style: const TextStyle(color: Colors.red),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildAuthStatusRow(String label, dynamic value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(fontWeight: FontWeight.w500),
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: _getAuthValueColor(value),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Text(
+              value.toString(),
+              style: TextStyle(
+                color: _getAuthTextColor(value),
+                fontFamily: 'monospace',
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _getAuthValueColor(dynamic value) {
+    if (value is bool) {
+      return value ? Colors.green.withOpacity(0.2) : Colors.red.withOpacity(0.2);
+    }
+    return Colors.blue.withOpacity(0.2);
+  }
+
+  Color _getAuthTextColor(dynamic value) {
+    if (value is bool) {
+      return value ? Colors.green[700]! : Colors.red[700]!;
+    }
+    return Colors.blue[700]!;
+  }
+
+  Future<void> _testAuthentication() async {
+    try {
+      LoggingService.info('Starting authentication test...', tag: 'DEBUG');
+      final result = await AuthTestService.testAuthentication();
+      
+      if (result) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Authentication test passed!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Authentication test failed!'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      LoggingService.error('Authentication test error: $e', tag: 'DEBUG');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Authentication test error: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   Widget _buildApiTestCard() {

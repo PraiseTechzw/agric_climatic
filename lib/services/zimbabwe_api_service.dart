@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import '../models/weather.dart';
 import '../models/soil_data.dart';
 import 'network_service.dart';
+import 'logging_service.dart';
 
 class ZimbabweApiService {
   // Open-Meteo API endpoints (free, no API key required)
@@ -188,7 +189,10 @@ class ZimbabweApiService {
         );
         return soilData;
       } catch (openEpiError) {
-        print('OpenEPI API failed, trying Open-Meteo: $openEpiError');
+        LoggingService.warning(
+          'OpenEPI soil API failed, using fallback',
+          extra: {'error': openEpiError.toString(), 'city': city},
+        );
 
         // Generate fallback soil data since Open-Meteo soil API is not available
         return SoilData(
@@ -304,20 +308,47 @@ class ZimbabweApiService {
   // Parse current weather data
   static Weather _parseCurrentWeather(Map<String, dynamic> data, String city) {
     final current = data['current_weather'] as Map<String, dynamic>;
-    // final hourly = data['hourly'] as Map<String, dynamic>; // Not used in current implementation
+    final hourly = data['hourly'] as Map<String, dynamic>?;
+
+    double? humidity;
+    double? precipitation;
+    try {
+      if (hourly != null) {
+        final List<dynamic> times = hourly['time'] as List<dynamic>;
+        final List<dynamic>? humidities =
+            hourly['relative_humidity_2m'] as List<dynamic>?;
+        final List<dynamic>? precips =
+            hourly['precipitation'] as List<dynamic>?;
+
+        final String currentTimeStr = current['time'] as String;
+        final int idx = times.indexOf(currentTimeStr);
+        final int index = idx >= 0
+            ? idx
+            : (times.isNotEmpty ? times.length - 1 : -1);
+
+        if (index >= 0) {
+          if (humidities != null && index < humidities.length) {
+            humidity = (humidities[index] as num).toDouble();
+          }
+          if (precips != null && index < precips.length) {
+            precipitation = (precips[index] as num).toDouble();
+          }
+        }
+      }
+    } catch (_) {}
 
     return Weather(
       id: '${city}_${DateTime.now().millisecondsSinceEpoch}',
       dateTime: DateTime.parse(current['time'] as String),
       temperature: (current['temperature'] as num).toDouble(),
-      humidity: 60.0, // Default value, not available in current_weather
-      precipitation: 0.0, // Default value
+      humidity: humidity ?? 0.0,
+      precipitation: precipitation ?? 0.0,
       windSpeed: (current['windspeed'] as num).toDouble(),
       condition: _getWeatherDescription(current['weathercode'] as int),
       description: _getWeatherDescription(current['weathercode'] as int),
       icon: _getWeatherIcon(current['weathercode'] as int),
-      pressure: 1013.25, // Default value
-      visibility: 10.0, // Default value
+      pressure: 1013.25,
+      visibility: 10.0,
     );
   }
 

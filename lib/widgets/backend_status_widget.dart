@@ -63,51 +63,64 @@ class _BackendStatusWidgetState extends State<BackendStatusWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: _isConnected
-            ? Colors.green.withOpacity(0.1)
-            : Colors.orange.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: _isConnected
-              ? Colors.green.withOpacity(0.3)
-              : Colors.orange.withOpacity(0.3),
-        ),
-      ),
-      child: Row(
-        children: [
-          if (_isLoading)
-            const SizedBox(
-              width: 16,
-              height: 16,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
-          else
-            Icon(
-              _isConnected ? Icons.cloud_done : Icons.cloud_off,
-              color: _isConnected ? Colors.green : Colors.orange,
-              size: 16,
-            ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              _isLoading
-                  ? 'Checking backend connection...'
-                  : _isConnected
-                  ? 'Backend connected successfully'
-                  : 'Backend offline - using local data',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: _isConnected ? Colors.green[700] : Colors.orange[700],
-                fontWeight: FontWeight.w500,
-              ),
+    // Replace backend connectivity banner with a subtle status chip
+    return Align(
+      alignment: Alignment.topRight,
+      child: Container(
+        margin: const EdgeInsets.only(right: 16, top: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: (_isConnected ? Colors.green : Colors.orange).withOpacity(
+              0.4,
             ),
           ),
-          if (!_isLoading && !_isConnected)
-            TextButton(onPressed: _checkConnection, child: const Text('Retry')),
-        ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (_isLoading)
+              const SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            else
+              Icon(
+                _isConnected ? Icons.cloud_done : Icons.cloud_off,
+                color: _isConnected ? Colors.green : Colors.orange,
+                size: 16,
+              ),
+            const SizedBox(width: 6),
+            Text(
+              _isLoading
+                  ? 'Syncing…'
+                  : _isConnected
+                  ? 'Online'
+                  : 'Offline',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurface,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            if (!_isLoading && !_isConnected)
+              Padding(
+                padding: const EdgeInsets.only(left: 6),
+                child: InkWell(
+                  onTap: _checkConnection,
+                  child: Text(
+                    'Retry',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

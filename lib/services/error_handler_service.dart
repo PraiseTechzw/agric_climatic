@@ -152,25 +152,7 @@ class ErrorHandlerService {
     }
   }
 
-  static void handleSupabaseError(
-    BuildContext context,
-    Object error, {
-    String? message,
-    VoidCallback? onRetry,
-  }) {
-    final errorMessage = message ?? _getSupabaseErrorMessage(error);
-
-    LoggingService.logErrorWithContext(
-      'Supabase Error',
-      error,
-      context: 'Supabase Error Handler',
-      extra: {'user_message': errorMessage},
-    );
-
-    if (context.mounted) {
-      _showErrorSnackBar(context, errorMessage, onRetry);
-    }
-  }
+  // Supabase removed
 
   static void _showErrorSnackBar(
     BuildContext context,
@@ -225,23 +207,7 @@ class ErrorHandlerService {
     }
   }
 
-  static String _getSupabaseErrorMessage(Object error) {
-    final errorString = error.toString().toLowerCase();
-
-    if (errorString.contains('network')) {
-      return 'Network error. Please check your internet connection.';
-    } else if (errorString.contains('permission')) {
-      return 'Permission denied. Please check your account settings.';
-    } else if (errorString.contains('not found')) {
-      return 'Data not found. Please try again.';
-    } else if (errorString.contains('duplicate')) {
-      return 'Data already exists. Please check your input.';
-    } else if (errorString.contains('unavailable')) {
-      return 'Service temporarily unavailable. Please try again later.';
-    } else {
-      return 'Database error. Please try again.';
-    }
-  }
+  // Supabase removed
 
   static void showErrorDialog(
     BuildContext context,

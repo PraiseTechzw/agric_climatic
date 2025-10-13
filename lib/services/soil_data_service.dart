@@ -79,23 +79,23 @@ class SoilDataService {
     }
 
     // Nutrient levels
-    if (soilData.nitrogen >= 50.0)
+    if (soilData.nitrogen >= 50.0) {
       score += 15.0;
-    else if (soilData.nitrogen >= 30.0)
+    } else if (soilData.nitrogen >= 30.0)
       score += 10.0;
     else
       score += 5.0;
 
-    if (soilData.phosphorus >= 30.0)
+    if (soilData.phosphorus >= 30.0) {
       score += 15.0;
-    else if (soilData.phosphorus >= 15.0)
+    } else if (soilData.phosphorus >= 15.0)
       score += 10.0;
     else
       score += 5.0;
 
-    if (soilData.potassium >= 200.0)
+    if (soilData.potassium >= 200.0) {
       score += 20.0;
-    else if (soilData.potassium >= 150.0)
+    } else if (soilData.potassium >= 150.0)
       score += 15.0;
     else
       score += 10.0;

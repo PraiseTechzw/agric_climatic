@@ -1,7 +1,6 @@
 import 'package:agric_climatic/providers/agro_climatic_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'services/firebase_config.dart';
 import 'services/error_handler_service.dart';
 import 'services/logging_service.dart';
@@ -9,13 +8,13 @@ import 'services/environment_service.dart';
 import 'services/offline_service.dart';
 import 'services/performance_service.dart';
 import 'services/notification_service.dart';
-import 'screens/splash_screen.dart';
-import 'screens/auth_screen.dart';
+import 'widgets/auth_wrapper.dart';
+import 'widgets/auth_guard.dart';
+import 'widgets/auth_status_indicator.dart';
 import 'screens/weather_screen.dart';
-import 'screens/weather_forecast_screen.dart';
 import 'screens/weather_alerts_screen.dart';
-import 'screens/predictions_screen.dart';
-import 'screens/crop_recommendations_screen.dart';
+import 'screens/enhanced_predictions_screen.dart';
+import 'screens/recommendations_screen.dart';
 import 'screens/irrigation_schedule_screen.dart';
 import 'screens/analytics_screen.dart';
 import 'screens/soil_data_screen.dart';
@@ -25,6 +24,8 @@ import 'screens/help_screen.dart';
 import 'screens/debug_screen.dart';
 import 'providers/weather_provider.dart';
 import 'providers/notification_provider.dart';
+import 'providers/auth_provider.dart';
+import 'services/firebase_ai_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -43,6 +44,11 @@ void main() async {
 
   // Initialize notification service
   await NotificationService.initialize();
+
+  // Initialize Firebase AI early (non-blocking)
+  try {
+    await FirebaseAIService.instance.initialize();
+  } catch (_) {}
 
   LoggingService.info('Starting AgriClimatic app');
 
@@ -63,17 +69,7 @@ void main() async {
     );
   }
 
-  // Initialize Supabase
-  try {
-    await Supabase.initialize(
-      url: EnvironmentService.supabaseUrl,
-      anonKey: EnvironmentService.supabaseAnonKey,
-    );
-    LoggingService.info('Supabase initialized successfully');
-  } catch (e) {
-    LoggingService.error('Supabase initialization failed', error: e);
-    // Continue without Supabase - app will work in offline mode
-  }
+  // Supabase removed — app now uses Firebase only
 
   runApp(const MyApp());
 }
@@ -85,6 +81,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => WeatherProvider()),
         ChangeNotifierProvider(create: (_) => AgroClimaticProvider()),
         ChangeNotifierProvider(create: (_) => NotificationProvider()),
@@ -131,7 +128,7 @@ class MyApp extends StatelessWidget {
             backgroundColor: Colors.transparent,
           ),
         ),
-        home: const SplashScreen(),
+        home: const AuthWrapper(),
         routes: {'/notifications': (context) => const NotificationsScreen()},
       ),
     );
@@ -150,10 +147,9 @@ class _MainScreenState extends State<MainScreen> {
 
   final List<Widget> _screens = [
     const WeatherScreen(),
-    const WeatherForecastScreen(),
     const WeatherAlertsScreen(),
-    const PredictionsScreen(),
-    const CropRecommendationsScreen(),
+    const EnhancedPredictionsScreen(),
+    const RecommendationsScreen(),
     const IrrigationScheduleScreen(),
     const AnalyticsScreen(),
     const SoilDataScreen(),
@@ -176,170 +172,187 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      extendBody: true,
-      drawer: _buildDrawer(context),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Theme.of(context).colorScheme.primaryContainer.withOpacity(0.05),
-              Theme.of(context).colorScheme.surface,
-              Theme.of(
-                context,
-              ).colorScheme.secondaryContainer.withOpacity(0.05),
-            ],
-          ),
-        ),
-        child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 300),
-          transitionBuilder: (child, animation) {
-            return SlideTransition(
-              position:
-                  Tween<Offset>(
-                    begin: const Offset(1.0, 0.0),
-                    end: Offset.zero,
-                  ).animate(
-                    CurvedAnimation(parent: animation, curve: Curves.easeInOut),
-                  ),
-              child: child,
-            );
-          },
-          child: Container(
-            key: ValueKey(_selectedIndex),
-            child: _screens[_selectedIndex],
-          ),
-        ),
-      ),
-      bottomNavigationBar: Container(
-        margin: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(25),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 20,
-              offset: const Offset(0, 10),
+    return AuthGuard(
+      child: Scaffold(
+        extendBody: true,
+        drawer: _buildDrawer(context),
+        body: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Theme.of(
+                  context,
+                ).colorScheme.primaryContainer.withOpacity(0.05),
+                Theme.of(context).colorScheme.surface,
+                Theme.of(
+                  context,
+                ).colorScheme.secondaryContainer.withOpacity(0.05),
+              ],
             ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(25),
-          child: BottomNavigationBar(
-            currentIndex: _selectedIndex,
-            onTap: (index) {
-              setState(() {
-                _selectedIndex = index;
-              });
+          ),
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 300),
+            transitionBuilder: (child, animation) {
+              return SlideTransition(
+                position:
+                    Tween<Offset>(
+                      begin: const Offset(1.0, 0.0),
+                      end: Offset.zero,
+                    ).animate(
+                      CurvedAnimation(
+                        parent: animation,
+                        curve: Curves.easeInOut,
+                      ),
+                    ),
+                child: child,
+              );
             },
-            type: BottomNavigationBarType.fixed,
-            backgroundColor: Colors.transparent,
-            selectedItemColor: Theme.of(context).colorScheme.primary,
-            unselectedItemColor: Colors.grey[500],
-            selectedLabelStyle: const TextStyle(
-              fontWeight: FontWeight.w600,
-              fontSize: 12,
+            child: Container(
+              key: ValueKey(_selectedIndex),
+              child: _screens[_selectedIndex],
             ),
-            unselectedLabelStyle: const TextStyle(
-              fontWeight: FontWeight.w500,
-              fontSize: 12,
-            ),
-            elevation: 0,
-            items: [
-              BottomNavigationBarItem(
-                icon: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: _selectedIndex == 0
-                        ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
-                        : Colors.transparent,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    _selectedIndex == 0
-                        ? Icons.wb_sunny
-                        : Icons.wb_sunny_outlined,
-                    size: 24,
-                  ),
-                ),
-                label: 'Weather',
-              ),
-              BottomNavigationBarItem(
-                icon: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: _selectedIndex == 1
-                        ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
-                        : Colors.transparent,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    _selectedIndex == 1
-                        ? Icons.calendar_today
-                        : Icons.calendar_today_outlined,
-                    size: 24,
-                  ),
-                ),
-                label: 'Forecast',
-              ),
-              BottomNavigationBarItem(
-                icon: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: _selectedIndex == 2
-                        ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
-                        : Colors.transparent,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    _selectedIndex == 2
-                        ? Icons.warning
-                        : Icons.warning_outlined,
-                    size: 24,
-                  ),
-                ),
-                label: 'Alerts',
-              ),
-              BottomNavigationBarItem(
-                icon: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: _selectedIndex == 3
-                        ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
-                        : Colors.transparent,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    _selectedIndex == 3
-                        ? Icons.analytics
-                        : Icons.analytics_outlined,
-                    size: 24,
-                  ),
-                ),
-                label: 'Predictions',
-              ),
-              BottomNavigationBarItem(
-                icon: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: _selectedIndex == 4
-                        ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
-                        : Colors.transparent,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    _selectedIndex == 4
-                        ? Icons.agriculture
-                        : Icons.agriculture_outlined,
-                    size: 24,
-                  ),
-                ),
-                label: 'Crops',
+          ),
+        ),
+        bottomNavigationBar: Container(
+          margin: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(25),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
               ),
             ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(25),
+            child: BottomNavigationBar(
+              currentIndex: _selectedIndex,
+              onTap: (index) {
+                setState(() {
+                  _selectedIndex = index;
+                });
+              },
+              type: BottomNavigationBarType.fixed,
+              backgroundColor: Colors.transparent,
+              selectedItemColor: Theme.of(context).colorScheme.primary,
+              unselectedItemColor: Colors.grey[500],
+              selectedLabelStyle: const TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+              ),
+              unselectedLabelStyle: const TextStyle(
+                fontWeight: FontWeight.w500,
+                fontSize: 12,
+              ),
+              elevation: 0,
+              items: [
+                BottomNavigationBarItem(
+                  icon: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: _selectedIndex == 0
+                          ? Theme.of(
+                              context,
+                            ).colorScheme.primary.withOpacity(0.1)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      _selectedIndex == 0
+                          ? Icons.wb_sunny
+                          : Icons.wb_sunny_outlined,
+                      size: 24,
+                    ),
+                  ),
+                  label: 'Weather',
+                ),
+                BottomNavigationBarItem(
+                  icon: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: _selectedIndex == 1
+                          ? Theme.of(
+                              context,
+                            ).colorScheme.primary.withOpacity(0.1)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      _selectedIndex == 1
+                          ? Icons.warning
+                          : Icons.warning_outlined,
+                      size: 24,
+                    ),
+                  ),
+                  label: 'Alerts',
+                ),
+                BottomNavigationBarItem(
+                  icon: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: _selectedIndex == 2
+                          ? Theme.of(
+                              context,
+                            ).colorScheme.primary.withOpacity(0.1)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      _selectedIndex == 2
+                          ? Icons.analytics
+                          : Icons.analytics_outlined,
+                      size: 24,
+                    ),
+                  ),
+                  label: 'Predictions',
+                ),
+                BottomNavigationBarItem(
+                  icon: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: _selectedIndex == 3
+                          ? Theme.of(
+                              context,
+                            ).colorScheme.primary.withOpacity(0.1)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      _selectedIndex == 3
+                          ? Icons.lightbulb
+                          : Icons.lightbulb_outline,
+                      size: 24,
+                    ),
+                  ),
+                  label: 'Recommendations',
+                ),
+                BottomNavigationBarItem(
+                  icon: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: _selectedIndex == 4
+                          ? Theme.of(
+                              context,
+                            ).colorScheme.primary.withOpacity(0.1)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      _selectedIndex == 4
+                          ? Icons.water_drop
+                          : Icons.water_drop_outlined,
+                      size: 24,
+                    ),
+                  ),
+                  label: 'Irrigation',
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -365,7 +378,13 @@ class _MainScreenState extends State<MainScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.agriculture, size: 48, color: Colors.white),
+                Row(
+                  children: [
+                    Icon(Icons.agriculture, size: 48, color: Colors.white),
+                    const Spacer(),
+                    const AuthStatusIndicator(),
+                  ],
+                ),
                 const SizedBox(height: 8),
                 Text(
                   'AgriClimatic',
@@ -384,27 +403,16 @@ class _MainScreenState extends State<MainScreen> {
             ),
           ),
           _buildDrawerItem(context, 'Weather', Icons.wb_sunny, 0),
-          _buildDrawerItem(
-            context,
-            'Weather Forecast',
-            Icons.calendar_today,
-            1,
-          ),
-          _buildDrawerItem(context, 'Weather Alerts', Icons.warning, 2),
-          _buildDrawerItem(context, 'Predictions', Icons.analytics, 3),
-          _buildDrawerItem(
-            context,
-            'Crop Recommendations',
-            Icons.agriculture,
-            4,
-          ),
-          _buildDrawerItem(context, 'Irrigation Schedule', Icons.water_drop, 5),
-          _buildDrawerItem(context, 'Analytics', Icons.trending_up, 6),
-          _buildDrawerItem(context, 'Soil Data', Icons.terrain, 7),
-          _buildDrawerItem(context, 'AI Insights', Icons.psychology, 8),
-          _buildDrawerItem(context, 'Help & Support', Icons.help, 9),
+          _buildDrawerItem(context, 'Weather Alerts', Icons.warning, 1),
+          _buildDrawerItem(context, 'Predictions', Icons.analytics, 2),
+          _buildDrawerItem(context, 'Recommendations', Icons.lightbulb, 3),
+          _buildDrawerItem(context, 'Irrigation Schedule', Icons.water_drop, 4),
+          _buildDrawerItem(context, 'Analytics', Icons.trending_up, 5),
+          _buildDrawerItem(context, 'Soil Data', Icons.terrain, 6),
+          _buildDrawerItem(context, 'AI Insights', Icons.psychology, 7),
+          _buildDrawerItem(context, 'Help & Support', Icons.help, 8),
           if (EnvironmentService.enableDebugMenu)
-            _buildDrawerItem(context, 'Debug Console', Icons.bug_report, 10),
+            _buildDrawerItem(context, 'Debug Console', Icons.bug_report, 9),
           const Divider(),
           ListTile(
             leading: const Icon(Icons.logout),
@@ -451,12 +459,11 @@ class _MainScreenState extends State<MainScreen> {
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(context);
-              // Add sign out logic here
-              Navigator.of(context).pushReplacement(
-                MaterialPageRoute(builder: (context) => const AuthScreen()),
-              );
+              // Sign out using AuthProvider
+              final authProvider = context.read<AuthProvider>();
+              await authProvider.signOut();
             },
             child: const Text('Sign Out'),
           ),

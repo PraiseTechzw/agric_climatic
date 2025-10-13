@@ -17,7 +17,7 @@ class FirebaseAIService {
   bool _isInitialized = false;
   int _requestCount = 0;
   int _errorCount = 0;
-  List<Duration> _responseTimes = [];
+  final List<Duration> _responseTimes = [];
   DateTime? _lastRequestTime;
 
   /// Initialize Firebase AI service
@@ -610,7 +610,7 @@ Format as structured market analysis with specific recommendations.
 
   Map<String, dynamic> _parsePestDiseaseAssessment(String response) {
     try {
-      return {
+      final Map<String, dynamic> structured = {
         'pest_risks': [
           {
             'pest': 'Fall Armyworm',
@@ -640,6 +640,34 @@ Format as structured market analysis with specific recommendations.
         'ai_confidence': 0.80,
         'raw_response': response,
       };
+
+      // Provide flattened convenience fields to avoid type-cast issues downstream
+      try {
+        final List<dynamic> pestRisks =
+            structured['pest_risks'] as List<dynamic>;
+        structured['high_risk_pests'] = pestRisks
+            .where(
+              (e) =>
+                  (e is Map &&
+                  (e['risk_level']?.toString().toLowerCase() == 'high')),
+            )
+            .map((e) => (e as Map)['pest']?.toString() ?? '')
+            .where((s) => s.isNotEmpty)
+            .toList();
+      } catch (_) {}
+
+      try {
+        final List<dynamic> diseaseRisks =
+            structured['disease_risks'] as List<dynamic>;
+        structured['disease_risks_flat'] = diseaseRisks
+            .map(
+              (e) => e is Map ? (e['disease']?.toString() ?? '') : e.toString(),
+            )
+            .where((s) => s.isNotEmpty)
+            .toList();
+      } catch (_) {}
+
+      return structured;
     } catch (e) {
       LoggingService.error(
         'Failed to parse pest disease assessment',

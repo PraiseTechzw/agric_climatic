@@ -32,8 +32,7 @@
 -keep class com.google.firebase.** { *; }
 -keep class com.google.android.gms.** { *; }
 
-# Supabase rules
--keep class io.supabase.** { *; }
+# Supabase removed
 
 # Keep model classes
 -keep class com.agricclimatic.zimbabwe.models.** { *; }

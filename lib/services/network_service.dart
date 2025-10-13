@@ -11,6 +11,11 @@ class NetworkService {
   static const int _maxRetries = 3;
   static const Duration _retryDelay = Duration(seconds: 2);
 
+  // Cache for internet connection check
+  static bool? _cachedInternetStatus;
+  static DateTime? _lastInternetCheckTime;
+  static const Duration _cacheValidDuration = Duration(seconds: 30);
+
   /// Get a configured HTTP client with proper timeouts and headers
   static http.Client getHttpClient() {
     return http.Client();
@@ -124,40 +129,34 @@ class NetworkService {
   /// Check if the device has internet connectivity
   static Future<bool> hasInternetConnection() async {
     try {
+      // Return cached result if still valid
+      if (_cachedInternetStatus != null && _lastInternetCheckTime != null) {
+        final timeSinceLastCheck = DateTime.now().difference(
+          _lastInternetCheckTime!,
+        );
+        if (timeSinceLastCheck < _cacheValidDuration) {
+          return _cachedInternetStatus!;
+        }
+      }
+
       final connectivityResult = await Connectivity().checkConnectivity();
 
       if (connectivityResult == ConnectivityResult.none) {
-        LoggingService.info('No internet connection detected');
+        _cachedInternetStatus = false;
+        _lastInternetCheckTime = DateTime.now();
         return false;
       }
 
-      // Additional check by trying to reach a reliable endpoint
-      try {
-        final client = getHttpClient();
-        final response = await client
-            .get(Uri.parse('https://www.google.com'))
-            .timeout(const Duration(seconds: 5));
-        client.close();
+      // Just trust the connectivity check without pinging external server
+      // This avoids excessive network requests and warnings
+      _cachedInternetStatus = true;
+      _lastInternetCheckTime = DateTime.now();
 
-        final hasConnection = response.statusCode == 200;
-        LoggingService.info(
-          'Internet connection check',
-          extra: {
-            'has_connection': hasConnection,
-            'status_code': response.statusCode,
-          },
-        );
-
-        return hasConnection;
-      } catch (e) {
-        LoggingService.warning(
-          'Internet connection check failed',
-          extra: {'error': e.toString()},
-        );
-        return false;
-      }
+      return true;
     } catch (e) {
-      LoggingService.error('Connectivity check failed', error: e);
+      // Silently fail and assume no connection
+      _cachedInternetStatus = false;
+      _lastInternetCheckTime = DateTime.now();
       return false;
     }
   }

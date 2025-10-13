@@ -484,7 +484,7 @@ class _IrrigationScheduleScreenState extends State<IrrigationScheduleScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'No irrigation schedule found for ${_selectedCrop} in ${_selectedGrowthStage} stage',
+              'No irrigation schedule found for $_selectedCrop in $_selectedGrowthStage stage',
               style: Theme.of(
                 context,
               ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
@@ -818,7 +818,7 @@ class _IrrigationScheduleScreenState extends State<IrrigationScheduleScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             DropdownButtonFormField<String>(
-              value: _selectedCrop,
+              initialValue: _selectedCrop,
               decoration: const InputDecoration(labelText: 'Crop'),
               items: _crops.map((crop) {
                 return DropdownMenuItem(value: crop, child: Text(crop));
@@ -831,7 +831,7 @@ class _IrrigationScheduleScreenState extends State<IrrigationScheduleScreen> {
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
-              value: _selectedGrowthStage,
+              initialValue: _selectedGrowthStage,
               decoration: const InputDecoration(labelText: 'Growth Stage'),
               items: _growthStages.map((stage) {
                 return DropdownMenuItem(value: stage, child: Text(stage));

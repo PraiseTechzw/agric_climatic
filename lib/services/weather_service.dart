@@ -1,4 +1,4 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../models/weather.dart';
@@ -6,7 +6,7 @@ import '../models/weather_alert.dart';
 import 'network_service.dart';
 
 class WeatherService {
-  final SupabaseClient _supabase = Supabase.instance.client;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   // WeatherAPI configuration for Zimbabwe
   static const String _baseUrl = 'https://api.weatherapi.com/v1';
@@ -63,14 +63,17 @@ class WeatherService {
     required DateTime endDate,
   }) async {
     try {
-      final response = await _supabase
-          .from('weather_data')
-          .select()
-          .gte('date_time', startDate.toIso8601String())
-          .lte('date_time', endDate.toIso8601String())
-          .order('date_time', ascending: true);
+      final snapshot = await _firestore
+          .collection('weather_data')
+          .where(
+            'date_time',
+            isGreaterThanOrEqualTo: startDate.toIso8601String(),
+          )
+          .where('date_time', isLessThanOrEqualTo: endDate.toIso8601String())
+          .orderBy('date_time', descending: false)
+          .get();
 
-      return response.map((json) => Weather.fromJson(json)).toList();
+      return snapshot.docs.map((doc) => Weather.fromJson(doc.data())).toList();
     } catch (e) {
       throw Exception('Failed to fetch historical weather: $e');
     }
@@ -78,12 +81,14 @@ class WeatherService {
 
   Future<List<WeatherAlert>> getWeatherAlerts() async {
     try {
-      final response = await _supabase
-          .from('weather_alerts')
-          .select()
-          .order('date', ascending: false);
+      final snapshot = await _firestore
+          .collection('weather_alerts')
+          .orderBy('date', descending: true)
+          .get();
 
-      return response.map((json) => WeatherAlert.fromJson(json)).toList();
+      return snapshot.docs
+          .map((doc) => WeatherAlert.fromJson(doc.data()))
+          .toList();
     } catch (e) {
       throw Exception('Failed to fetch weather alerts: $e');
     }
@@ -251,7 +256,7 @@ class WeatherService {
       final hour = hourly[i];
       hourlyWeather.add(
         Weather(
-          id: 'hourly_${i}',
+          id: 'hourly_$i',
           dateTime: DateTime.parse(hour['time']),
           temperature: hour['temp_c'].toDouble(),
           humidity: hour['humidity'].toDouble(),
@@ -273,7 +278,7 @@ class WeatherService {
       final date = daily[i]['date'];
       dailyWeather.add(
         Weather(
-          id: 'daily_${i}',
+          id: 'daily_$i',
           dateTime: DateTime.parse(date),
           temperature:
               (day['maxtemp_c'].toDouble() + day['mintemp_c'].toDouble()) / 2,
@@ -297,8 +302,9 @@ class WeatherService {
     if (weatherCode == 1000) return 'clear';
     if (weatherCode == 1003) return 'cloudy';
     if (weatherCode == 1006 || weatherCode == 1009) return 'cloudy';
-    if (weatherCode == 1030 || weatherCode == 1135 || weatherCode == 1147)
+    if (weatherCode == 1030 || weatherCode == 1135 || weatherCode == 1147) {
       return 'foggy';
+    }
     if (weatherCode >= 1063 && weatherCode <= 1201) return 'rainy';
     if (weatherCode >= 1210 && weatherCode <= 1237) return 'snowy';
     if (weatherCode >= 1240 && weatherCode <= 1264) return 'snowy';
@@ -312,14 +318,17 @@ class WeatherService {
     if (weatherCode == 1003) return '02d'; // Partly cloudy
     if (weatherCode == 1006) return '04d'; // Cloudy
     if (weatherCode == 1009) return '04d'; // Overcast
-    if (weatherCode == 1030 || weatherCode == 1135 || weatherCode == 1147)
+    if (weatherCode == 1030 || weatherCode == 1135 || weatherCode == 1147) {
       return '50d'; // Fog
+    }
     if (weatherCode >= 1063 && weatherCode <= 1201) return '10d'; // Rain
     if (weatherCode >= 1210 && weatherCode <= 1237) return '13d'; // Snow
-    if (weatherCode >= 1240 && weatherCode <= 1264)
+    if (weatherCode >= 1240 && weatherCode <= 1264) {
       return '13d'; // Snow showers
-    if (weatherCode >= 1273 && weatherCode <= 1282)
+    }
+    if (weatherCode >= 1273 && weatherCode <= 1282) {
       return '11d'; // Thunderstorm
+    }
     return '01d';
   }
 

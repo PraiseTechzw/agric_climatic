@@ -161,7 +161,7 @@ class _AIInsightsScreenState extends State<AIInsightsScreen> {
               children: [
                 Expanded(
                   child: DropdownButtonFormField<String>(
-                    value: _selectedCrop,
+                    initialValue: _selectedCrop,
                     decoration: const InputDecoration(labelText: 'Crop'),
                     items: _crops.map((crop) {
                       return DropdownMenuItem(
@@ -179,7 +179,7 @@ class _AIInsightsScreenState extends State<AIInsightsScreen> {
                 const SizedBox(width: 16),
                 Expanded(
                   child: DropdownButtonFormField<String>(
-                    value: _selectedGrowthStage,
+                    initialValue: _selectedGrowthStage,
                     decoration: const InputDecoration(
                       labelText: 'Growth Stage',
                     ),
@@ -200,7 +200,7 @@ class _AIInsightsScreenState extends State<AIInsightsScreen> {
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
-              value: _selectedLocation,
+              initialValue: _selectedLocation,
               decoration: const InputDecoration(labelText: 'Location'),
               items: _locations.map((location) {
                 return DropdownMenuItem(value: location, child: Text(location));

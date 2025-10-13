@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 import '../providers/weather_provider.dart';
 import '../widgets/location_dropdown.dart';
-import '../widgets/backend_status_widget.dart';
 import '../services/soil_data_service.dart';
 import '../models/soil_data.dart';
 
@@ -13,18 +13,33 @@ class WeatherScreen extends StatefulWidget {
   State<WeatherScreen> createState() => _WeatherScreenState();
 }
 
-class _WeatherScreenState extends State<WeatherScreen> {
+class _WeatherScreenState extends State<WeatherScreen>
+    with SingleTickerProviderStateMixin {
   final SoilDataService _soilService = SoilDataService();
   SoilData? _soilData;
+  late TabController _tabController;
+
+  // Forecast filters
+  String _selectedPeriod = '7 Days';
+  String _selectedView = 'Daily';
+  final List<String> _periods = ['3 Days', '7 Days', '14 Days'];
+  final List<String> _views = ['Daily', 'Hourly'];
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // Try to detect location first, then load weather
       context.read<WeatherProvider>().detectLocation();
       _loadSoilData();
     });
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadSoilData() async {
@@ -75,6 +90,15 @@ class _WeatherScreenState extends State<WeatherScreen> {
                 size: 24,
               ),
             ),
+            const SizedBox(width: 8),
+            const Text('Weather'),
+          ],
+        ),
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: const [
+            Tab(text: 'Current', icon: Icon(Icons.wb_sunny_outlined)),
+            Tab(text: 'Forecast', icon: Icon(Icons.calendar_today)),
           ],
         ),
         actions: [
@@ -155,53 +179,152 @@ class _WeatherScreenState extends State<WeatherScreen> {
           ),
         ],
       ),
-      body: Consumer<WeatherProvider>(
-        builder: (context, weatherProvider, child) {
-          return weatherProvider.isLoading
-              ? _buildLoadingState()
-              : RefreshIndicator(
-                  onRefresh: () async {
-                    await weatherProvider.refreshAll();
-                    await _loadSoilData();
-                  },
-                  child: SingleChildScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Backend status
-                        const BackendStatusWidget(),
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          // Current Weather Tab
+          _buildCurrentWeatherTab(),
+          // Forecast Tab
+          _buildForecastTab(),
+        ],
+      ),
+    );
+  }
 
-                        // Location status
-                        _buildLocationStatus(weatherProvider),
+  // Build Current Weather Tab
+  Widget _buildCurrentWeatherTab() {
+    return Consumer<WeatherProvider>(
+      builder: (context, weatherProvider, child) {
+        return weatherProvider.isLoading
+            ? _buildLoadingState()
+            : RefreshIndicator(
+                onRefresh: () async {
+                  await weatherProvider.refreshAll();
+                  await _loadSoilData();
+                },
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Removed verbose backend banner to keep UI focused
 
-                        if (weatherProvider.currentWeather != null)
-                          _buildCurrentWeatherCard(
-                            context,
-                            weatherProvider.currentWeather!,
-                          ),
-                        const SizedBox(height: 24),
-                        // Weather Alerts Section - Always show for better visibility
-                        _buildAlertsSection(
+                      // Location status
+                      _buildLocationStatus(weatherProvider),
+
+                      if (weatherProvider.currentWeather != null)
+                        _buildCurrentWeatherCard(
                           context,
-                          weatherProvider.weatherAlerts,
+                          weatherProvider.currentWeather!,
                         ),
+                      const SizedBox(height: 24),
+                      // Weather Alerts Section - Always show for better visibility
+                      _buildAlertsSection(
+                        context,
+                        weatherProvider.weatherAlerts,
+                      ),
+                      const SizedBox(height: 24),
+                      _buildWeatherDetailsCard(
+                        context,
+                        weatherProvider.currentWeather,
+                      ),
+                      const SizedBox(height: 24),
+                      if (_soilData != null) ...[
+                        _buildSoilDataCard(context, _soilData!),
                         const SizedBox(height: 24),
-                        _buildWeatherDetailsCard(
-                          context,
-                          weatherProvider.currentWeather,
-                        ),
-                        const SizedBox(height: 24),
-                        if (_soilData != null) ...[
-                          _buildSoilDataCard(context, _soilData!),
-                          const SizedBox(height: 24),
-                        ],
                       ],
-                    ),
+                    ],
                   ),
-                );
-        },
+                ),
+              );
+      },
+    );
+  }
+
+  // Build Forecast Tab
+  Widget _buildForecastTab() {
+    return Consumer<WeatherProvider>(
+      builder: (context, weatherProvider, child) {
+        if (weatherProvider.isLoading) {
+          return _buildLoadingState();
+        }
+
+        final forecasts = _buildForecastList(weatherProvider);
+
+        return RefreshIndicator(
+          onRefresh: () => weatherProvider.refreshAll(),
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Filter header
+                _buildForecastHeader(),
+                const SizedBox(height: 16),
+                // Filter chips
+                _buildForecastFilters(),
+                const SizedBox(height: 20),
+                // Forecast content
+                if (forecasts.isEmpty)
+                  _buildNoForecastData()
+                else if (_selectedView == 'Daily')
+                  _buildDailyForecastView(forecasts)
+                else
+                  _buildHourlyForecastView(weatherProvider),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildForecastHeader() {
+    return Card(
+      elevation: 2,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Theme.of(context).colorScheme.primary.withOpacity(0.1),
+              Theme.of(context).colorScheme.secondary.withOpacity(0.05),
+            ],
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.calendar_today,
+                  color: Theme.of(context).colorScheme.primary,
+                  size: 24,
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  'Weather Forecast',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Detailed forecast for agricultural planning',
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -300,22 +423,23 @@ class _WeatherScreenState extends State<WeatherScreen> {
   }
 
   Widget _buildCurrentWeatherCard(BuildContext context, weather) {
+    final accent = _timeOfDayColor(weather.dateTime);
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Theme.of(context).colorScheme.primary.withOpacity(0.1),
-            Theme.of(context).colorScheme.secondary.withOpacity(0.05),
+            accent.withOpacity(0.18),
+            Theme.of(context).colorScheme.surface,
           ],
         ),
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
+            color: accent.withOpacity(0.18),
+            blurRadius: 24,
+            offset: const Offset(0, 12),
           ),
         ],
       ),
@@ -329,40 +453,80 @@ class _WeatherScreenState extends State<WeatherScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Current Weather',
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(
-                              color: Colors.grey[600],
-                              fontWeight: FontWeight.w500,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Current Weather',
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(
+                                color: Colors.grey[600],
+                                fontWeight: FontWeight.w500,
+                              ),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Flexible(
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  '${weather.temperature.toStringAsFixed(1)}°C',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .displayLarge
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.primary,
+                                      ),
+                                ),
+                              ),
                             ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        '${weather.temperature.toStringAsFixed(1)}°C',
-                        style: Theme.of(context).textTheme.displayLarge
-                            ?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: Theme.of(context).colorScheme.primary,
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: accent.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                _timeOfDayLabel(weather.dateTime),
+                                style: Theme.of(context).textTheme.bodySmall
+                                    ?.copyWith(
+                                      color: accent.withOpacity(0.9),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                              ),
                             ),
-                      ),
-                    ],
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.primary.withOpacity(0.1),
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          accent.withOpacity(0.25),
+                          accent.withOpacity(0.1),
+                        ],
+                      ),
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Icon(
                       _getWeatherIcon(weather.condition),
                       size: 48,
-                      color: Theme.of(context).colorScheme.primary,
+                      color: accent,
                     ),
                   ),
                 ],
@@ -370,9 +534,20 @@ class _WeatherScreenState extends State<WeatherScreen> {
               const SizedBox(height: 16),
               Text(
                 weather.description,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
                 style: Theme.of(
                   context,
                 ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Updated ${_formatTime(weather.dateTime)}',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Colors.grey[600],
+                  fontWeight: FontWeight.w500,
+                ),
               ),
               const SizedBox(height: 24),
               Row(
@@ -533,12 +708,15 @@ class _WeatherScreenState extends State<WeatherScreen> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Colors.orange.withOpacity(0.1),
-            Colors.red.withOpacity(0.05),
+            _severityColor(alert.severity).withOpacity(0.12),
+            _severityColor(alert.severity).withOpacity(0.05),
           ],
         ),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.orange.withOpacity(0.3), width: 1),
+        border: Border.all(
+          color: _severityColor(alert.severity).withOpacity(0.3),
+          width: 1,
+        ),
       ),
       child: Card(
         elevation: 0,
@@ -546,16 +724,17 @@ class _WeatherScreenState extends State<WeatherScreen> {
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.orange.withOpacity(0.2),
+                  color: _severityColor(alert.severity).withOpacity(0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
-                  Icons.warning_amber_rounded,
-                  color: Colors.orange[700],
+                  _alertIcon(alert.type),
+                  color: _severityColor(alert.severity),
                   size: 20,
                 ),
               ),
@@ -564,18 +743,48 @@ class _WeatherScreenState extends State<WeatherScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      alert.title,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            alert.title ?? 'Alert',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _severityColor(
+                              alert.severity,
+                            ).withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            _formatRelativeTime(alert.date),
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(
+                                  color: _severityColor(alert.severity),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      alert.description,
+                      alert.description ?? '',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                       style: Theme.of(
                         context,
-                      ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
+                      ).textTheme.bodyMedium?.copyWith(color: Colors.grey[700]),
                     ),
                   ],
                 ),
@@ -725,7 +934,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
                     child: _buildSoilMetric(
                       context,
                       'pH Level',
-                      '${soilData.ph.toStringAsFixed(1)}',
+                      soilData.ph.toStringAsFixed(1),
                       soilData.phDescription,
                       _getPHColor(soilData.ph),
                       Icons.science,
@@ -821,7 +1030,6 @@ class _WeatherScreenState extends State<WeatherScreen> {
     return Colors.purple;
   }
 
-
   IconData _getWeatherIcon(String condition) {
     switch (condition.toLowerCase()) {
       case 'clear':
@@ -836,5 +1044,342 @@ class _WeatherScreenState extends State<WeatherScreen> {
       default:
         return Icons.wb_cloudy;
     }
+  }
+
+  String _timeOfDayLabel(DateTime dt) {
+    final hour = dt.hour;
+    if (hour >= 5 && hour < 12) return 'Morning';
+    if (hour >= 12 && hour < 17) return 'Afternoon';
+    if (hour >= 17 && hour < 21) return 'Evening';
+    return 'Night';
+  }
+
+  Color _timeOfDayColor(DateTime dt) {
+    switch (_timeOfDayLabel(dt)) {
+      case 'Morning':
+        return Colors.orange;
+      case 'Afternoon':
+        return Colors.blue;
+      case 'Evening':
+        return Colors.purple;
+      case 'Night':
+      default:
+        return Colors.indigo;
+    }
+  }
+
+  String _formatTime(DateTime dt) {
+    final h = dt.hour % 12 == 0 ? 12 : dt.hour % 12;
+    final m = dt.minute.toString().padLeft(2, '0');
+    final ampm = dt.hour >= 12 ? 'PM' : 'AM';
+    return '$h:$m $ampm';
+  }
+
+  Color _severityColor(String? severity) {
+    switch ((severity ?? '').toLowerCase()) {
+      case 'critical':
+      case 'severe':
+      case 'high':
+        return Colors.red;
+      case 'medium':
+        return Colors.orange;
+      case 'low':
+      default:
+        return Colors.green;
+    }
+  }
+
+  IconData _alertIcon(String? type) {
+    switch ((type ?? '').toLowerCase()) {
+      case 'fire':
+        return Icons.local_fire_department;
+      case 'flood':
+        return Icons.water;
+      case 'wind':
+        return Icons.air;
+      case 'heat':
+        return Icons.thermostat;
+      case 'cold':
+        return Icons.ac_unit;
+      default:
+        return Icons.warning_amber_rounded;
+    }
+  }
+
+  String _formatRelativeTime(DateTime? dt) {
+    if (dt == null) return 'now';
+    final diff = DateTime.now().difference(dt);
+    if (diff.inMinutes < 1) return 'now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+    if (diff.inHours < 24) return '${diff.inHours}h ago';
+    return '${diff.inDays}d ago';
+  }
+
+  // Forecast helper methods
+  List<Map<String, dynamic>> _buildForecastList(
+    WeatherProvider weatherProvider,
+  ) {
+    final dailyForecast = weatherProvider.dailyForecast;
+    if (dailyForecast.isEmpty) return [];
+
+    final forecastCount = _selectedPeriod == '3 Days'
+        ? 3
+        : _selectedPeriod == '7 Days'
+        ? 7
+        : 14;
+
+    return dailyForecast.take(forecastCount).map((weather) {
+      return {
+        'date': weather.dateTime,
+        'dayName': DateFormat('EEEE').format(weather.dateTime),
+        'temp': weather.temperature,
+        'tempMin': weather.temperature - 5,
+        'tempMax': weather.temperature + 5,
+        'condition': weather.description,
+        'humidity': weather.humidity,
+        'windSpeed': weather.windSpeed,
+        'precipitation': weather.precipitation,
+        'icon': _getWeatherIcon(weather.description),
+      };
+    }).toList();
+  }
+
+  Widget _buildForecastFilters() {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          ..._periods.map(
+            (period) => Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: ChoiceChip(
+                label: Text(period),
+                selected: _selectedPeriod == period,
+                onSelected: (selected) {
+                  if (selected) {
+                    setState(() => _selectedPeriod = period);
+                  }
+                },
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+          ..._views.map(
+            (view) => Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: ChoiceChip(
+                label: Text(view),
+                selected: _selectedView == view,
+                onSelected: (selected) {
+                  if (selected) {
+                    setState(() => _selectedView = view);
+                  }
+                },
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNoForecastData() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.cloud_off, size: 64, color: Colors.grey[400]),
+          const SizedBox(height: 16),
+          Text(
+            'No forecast data available',
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(color: Colors.grey[600]),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Pull down to refresh',
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: Colors.grey[500]),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDailyForecastView(List<Map<String, dynamic>> forecasts) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: forecasts
+          .map((forecast) => _buildDailyForecastCard(forecast))
+          .toList(),
+    );
+  }
+
+  Widget _buildDailyForecastCard(Map<String, dynamic> forecast) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    forecast['icon'],
+                    color: Theme.of(context).colorScheme.primary,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        forecast['dayName'],
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        DateFormat('MMM dd, yyyy').format(forecast['date']),
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      '${forecast['temp'].round()}°',
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                    ),
+                    Text(
+                      '${forecast['tempMin'].round()}° / ${forecast['tempMax'].round()}°',
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              forecast['condition'],
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildForecastMetric(
+                    'Humidity',
+                    '${forecast['humidity'].round()}%',
+                    Icons.opacity,
+                    Colors.blue,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildForecastMetric(
+                    'Wind',
+                    '${forecast['windSpeed'].round()} km/h',
+                    Icons.air,
+                    Colors.green,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildForecastMetric(
+                    'Rain',
+                    '${forecast['precipitation'].round()}mm',
+                    Icons.water_drop,
+                    Colors.blue,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildForecastMetric(
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: 16),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Colors.grey[600],
+              fontSize: 10,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHourlyForecastView(WeatherProvider weatherProvider) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Hourly Forecast',
+          style: Theme.of(
+            context,
+          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 16),
+        Text(
+          'Hourly forecast data coming soon',
+          style: Theme.of(
+            context,
+          ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
+        ),
+      ],
+    );
   }
 }

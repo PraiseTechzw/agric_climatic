@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import '../models/notification.dart';
 import '../models/agricultural_recommendation.dart';
 import '../services/notification_service.dart';
+import '../services/logging_service.dart';
 
 class NotificationProvider with ChangeNotifier {
   List<AppNotification> _notifications = [];
@@ -44,8 +45,8 @@ class NotificationProvider with ChangeNotifier {
     _error = null;
 
     try {
-      // For now, return empty list as getNotifications method doesn't exist
-      _notifications = [];
+      // Load notifications from local storage or create sample data
+      _notifications = await _loadStoredNotifications();
       notifyListeners();
     } catch (e) {
       _error = 'Failed to load notifications: $e';
@@ -53,6 +54,47 @@ class NotificationProvider with ChangeNotifier {
     } finally {
       _setLoading(false);
     }
+  }
+
+  // Load stored notifications from local storage
+  Future<List<AppNotification>> _loadStoredNotifications() async {
+    // For now, return sample notifications for testing
+    // In a real app, this would load from local storage or backend service
+    return _createSampleNotifications();
+  }
+
+  // Create sample notifications for testing
+  List<AppNotification> _createSampleNotifications() {
+    final now = DateTime.now();
+    return [
+      AppNotification(
+        id: '1',
+        title: 'Weather Alert: Heavy Rain Expected',
+        body:
+            'Heavy rainfall is expected in your area tomorrow. Consider postponing outdoor farming activities.',
+        type: 'weather_alert',
+        timestamp: now.subtract(const Duration(hours: 2)),
+        priority: 'high',
+      ),
+      AppNotification(
+        id: '2',
+        title: 'Crop Recommendation: Maize Planting',
+        body:
+            'Optimal conditions for maize planting are expected this week. Soil moisture levels are ideal.',
+        type: 'recommendation',
+        timestamp: now.subtract(const Duration(days: 1)),
+        priority: 'normal',
+      ),
+      AppNotification(
+        id: '3',
+        title: 'Weather Prediction Update',
+        body:
+            'Long-term weather patterns suggest a dry spell in the coming weeks. Plan irrigation accordingly.',
+        type: 'prediction',
+        timestamp: now.subtract(const Duration(days: 2)),
+        priority: 'normal',
+      ),
+    ];
   }
 
   // Send prediction update notification
@@ -119,13 +161,27 @@ class NotificationProvider with ChangeNotifier {
     required String title,
     required String body,
     String? payload,
+    String type = 'general',
+    String priority = 'normal',
   }) async {
     try {
       await NotificationService.sendSystemNotification(
         title: title,
         message: body,
       );
-      await loadNotifications();
+
+      // Add to local notifications list
+      final newNotification = AppNotification(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        title: title,
+        body: body,
+        type: type,
+        timestamp: DateTime.now(),
+        priority: priority,
+      );
+
+      _notifications.insert(0, newNotification);
+      notifyListeners();
     } catch (e) {
       _error = 'Failed to send local notification: $e';
       notifyListeners();
@@ -309,5 +365,54 @@ class NotificationProvider with ChangeNotifier {
   void _setLoading(bool loading) {
     _isLoading = loading;
     notifyListeners();
+  }
+
+  // Test notification system
+  Future<void> testNotificationSystem() async {
+    try {
+      _setLoading(true);
+      _error = null;
+
+      // Test the notification service
+      await NotificationService.testNotificationSystem();
+
+      // Add test notifications to the list
+      final testNotifications = [
+        AppNotification(
+          id: 'test_1',
+          title: 'Test System Notification',
+          body: 'This is a test system notification.',
+          type: 'system',
+          timestamp: DateTime.now(),
+          priority: 'normal',
+        ),
+        AppNotification(
+          id: 'test_2',
+          title: 'Test Weather Alert',
+          body: 'This is a test weather alert.',
+          type: 'weather_alert',
+          timestamp: DateTime.now(),
+          priority: 'high',
+        ),
+        AppNotification(
+          id: 'test_3',
+          title: 'Test Recommendation',
+          body: 'This is a test agricultural recommendation.',
+          type: 'recommendation',
+          timestamp: DateTime.now(),
+          priority: 'normal',
+        ),
+      ];
+
+      _notifications.insertAll(0, testNotifications);
+      notifyListeners();
+
+      LoggingService.info('Notification system test completed');
+    } catch (e) {
+      _error = 'Failed to test notification system: $e';
+      notifyListeners();
+    } finally {
+      _setLoading(false);
+    }
   }
 }

@@ -1,12 +1,12 @@
 import 'dart:math';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/weather.dart';
 import '../models/agro_climatic_prediction.dart';
 import '../models/weather_alert.dart';
 import '../services/notification_service.dart';
 
 class AgroPredictionService {
-  final SupabaseClient _supabase = Supabase.instance.client;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   // Zimbabwe crop data and climate zones
   final Map<String, Map<String, dynamic>> _cropData = {
@@ -165,15 +165,21 @@ class AgroPredictionService {
     DateTime? endDate,
   ]) async {
     try {
-      final response = await _supabase
-          .from('weather_data')
-          .select()
-          .eq('location_name', location)
-          .gte('date_time', startDate.toIso8601String())
-          .lte('date_time', (endDate ?? DateTime.now()).toIso8601String())
-          .order('date_time', ascending: true);
+      final snapshot = await _firestore
+          .collection('weather_data')
+          .where('location_name', isEqualTo: location)
+          .where(
+            'date_time',
+            isGreaterThanOrEqualTo: startDate.toIso8601String(),
+          )
+          .where(
+            'date_time',
+            isLessThanOrEqualTo: (endDate ?? DateTime.now()).toIso8601String(),
+          )
+          .orderBy('date_time', descending: false)
+          .get();
 
-      return response.map((json) => Weather.fromJson(json)).toList();
+      return snapshot.docs.map((doc) => Weather.fromJson(doc.data())).toList();
     } catch (e) {
       throw Exception(
         'Failed to fetch historical weather data for $location: $e',

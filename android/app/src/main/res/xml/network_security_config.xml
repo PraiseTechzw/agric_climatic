@@ -6,7 +6,7 @@
         <domain includeSubdomains="true">archive-api.open-meteo.com</domain>
         <domain includeSubdomains="true">api.openepi.io</domain>
         <domain includeSubdomains="true">api.weatherapi.com</domain>
-        <domain includeSubdomains="true">vivvsratuajxnjhrbojj.supabase.co</domain>
+        <!-- Supabase domain removed -->
         <domain includeSubdomains="true">firebase.googleapis.com</domain>
         <domain includeSubdomains="true">firebaseapp.com</domain>
         <domain includeSubdomains="true">googleapis.com</domain>

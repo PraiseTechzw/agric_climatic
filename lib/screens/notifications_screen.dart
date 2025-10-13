@@ -107,17 +107,28 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             children: [
               _buildFilterBar(provider),
               _buildSearchBar(),
-              Expanded(
-                child: _buildNotificationList(provider),
-              ),
+              Expanded(child: _buildNotificationList(provider)),
             ],
           );
         },
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showSendNotificationDialog(context),
-        child: const Icon(Icons.add),
-        tooltip: 'Send Test Notification',
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FloatingActionButton(
+            onPressed: () => _testNotificationSystem(context),
+            tooltip: 'Test Notification System',
+            heroTag: 'test_system',
+            child: const Icon(Icons.bug_report),
+          ),
+          const SizedBox(height: 8),
+          FloatingActionButton(
+            onPressed: () => _showSendNotificationDialog(context),
+            tooltip: 'Send Test Notification',
+            heroTag: 'send_notification',
+            child: const Icon(Icons.add),
+          ),
+        ],
       ),
     );
   }
@@ -132,13 +143,25 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           Row(
             children: [
               Expanded(
-                child: _buildFilterChip('all', 'All (${stats['total']})', provider),
+                child: _buildFilterChip(
+                  'all',
+                  'All (${stats['total']})',
+                  provider,
+                ),
               ),
               Expanded(
-                child: _buildFilterChip('unread', 'Unread (${stats['unread']})', provider),
+                child: _buildFilterChip(
+                  'unread',
+                  'Unread (${stats['unread']})',
+                  provider,
+                ),
               ),
               Expanded(
-                child: _buildFilterChip('high_priority', 'High Priority (${stats['high_priority']})', provider),
+                child: _buildFilterChip(
+                  'high_priority',
+                  'High Priority (${stats['high_priority']})',
+                  provider,
+                ),
               ),
             ],
           ),
@@ -146,13 +169,25 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           Row(
             children: [
               Expanded(
-                child: _buildFilterChip('prediction', 'Predictions (${stats['prediction']})', provider),
+                child: _buildFilterChip(
+                  'prediction',
+                  'Predictions (${stats['prediction']})',
+                  provider,
+                ),
               ),
               Expanded(
-                child: _buildFilterChip('recommendation', 'Recommendations (${stats['recommendation']})', provider),
+                child: _buildFilterChip(
+                  'recommendation',
+                  'Recommendations (${stats['recommendation']})',
+                  provider,
+                ),
               ),
               Expanded(
-                child: _buildFilterChip('weather_alert', 'Alerts (${stats['weather_alert']})', provider),
+                child: _buildFilterChip(
+                  'weather_alert',
+                  'Alerts (${stats['weather_alert']})',
+                  provider,
+                ),
               ),
             ],
           ),
@@ -161,9 +196,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     );
   }
 
-  Widget _buildFilterChip(String filter, String label, NotificationProvider provider) {
+  Widget _buildFilterChip(
+    String filter,
+    String label,
+    NotificationProvider provider,
+  ) {
     final isSelected = _selectedFilter == filter;
-    
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 2),
       child: FilterChip(
@@ -197,9 +236,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   },
                 )
               : null,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         ),
         onChanged: (value) {
           setState(() {});
@@ -242,16 +279,24 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         notifications = notifications.where((n) => !n.isRead).toList();
         break;
       case 'high_priority':
-        notifications = notifications.where((n) => n.priority == 'high').toList();
+        notifications = notifications
+            .where((n) => n.priority == 'high')
+            .toList();
         break;
       case 'prediction':
-        notifications = notifications.where((n) => n.type == 'prediction').toList();
+        notifications = notifications
+            .where((n) => n.type == 'prediction')
+            .toList();
         break;
       case 'recommendation':
-        notifications = notifications.where((n) => n.type == 'recommendation').toList();
+        notifications = notifications
+            .where((n) => n.type == 'recommendation')
+            .toList();
         break;
       case 'weather_alert':
-        notifications = notifications.where((n) => n.type == 'weather_alert').toList();
+        notifications = notifications
+            .where((n) => n.type == 'weather_alert')
+            .toList();
         break;
     }
 
@@ -263,24 +308,20 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.notifications_none,
-            size: 64,
-            color: Colors.grey[400],
-          ),
+          Icon(Icons.notifications_none, size: 64, color: Colors.grey[400]),
           const SizedBox(height: 16),
           Text(
             'No notifications found',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              color: Colors.grey[600],
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(color: Colors.grey[600]),
           ),
           const SizedBox(height: 8),
           Text(
             'You\'ll receive alerts and recommendations here',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Colors.grey[500],
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: Colors.grey[500]),
           ),
         ],
       ),
@@ -293,15 +334,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       child: ListTile(
         leading: CircleAvatar(
           backgroundColor: _getTypeColor(notification.type),
-          child: Icon(
-            _getTypeIcon(notification.type),
-            color: Colors.white,
-          ),
+          child: Icon(_getTypeIcon(notification.type), color: Colors.white),
         ),
         title: Text(
           notification.title,
           style: TextStyle(
-            fontWeight: notification.isRead ? FontWeight.normal : FontWeight.bold,
+            fontWeight: notification.isRead
+                ? FontWeight.normal
+                : FontWeight.bold,
           ),
         ),
         subtitle: Column(
@@ -318,7 +358,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 const SizedBox(width: 8),
                 if (notification.priority == 'high')
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.red,
                       borderRadius: BorderRadius.circular(10),
@@ -424,7 +467,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Clear All Notifications'),
-        content: const Text('Are you sure you want to clear all notifications? This action cannot be undone.'),
+        content: const Text(
+          'Are you sure you want to clear all notifications? This action cannot be undone.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
@@ -436,6 +481,41 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               Navigator.of(context).pop();
             },
             child: const Text('Clear All'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _testNotificationSystem(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Test Notification System'),
+        content: const Text(
+          'This will test all notification features including local notifications, weather alerts, and SMS functionality. Continue?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              await context
+                  .read<NotificationProvider>()
+                  .testNotificationSystem();
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Notification system test completed!'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              }
+            },
+            child: const Text('Test'),
           ),
         ],
       ),
@@ -473,22 +553,31 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
-              value: selectedType,
+              initialValue: selectedType,
               decoration: const InputDecoration(
                 labelText: 'Type',
                 border: OutlineInputBorder(),
               ),
               items: const [
                 DropdownMenuItem(value: 'general', child: Text('General')),
-                DropdownMenuItem(value: 'prediction', child: Text('Prediction')),
-                DropdownMenuItem(value: 'recommendation', child: Text('Recommendation')),
-                DropdownMenuItem(value: 'weather_alert', child: Text('Weather Alert')),
+                DropdownMenuItem(
+                  value: 'prediction',
+                  child: Text('Prediction'),
+                ),
+                DropdownMenuItem(
+                  value: 'recommendation',
+                  child: Text('Recommendation'),
+                ),
+                DropdownMenuItem(
+                  value: 'weather_alert',
+                  child: Text('Weather Alert'),
+                ),
               ],
               onChanged: (value) => selectedType = value!,
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
-              value: selectedPriority,
+              initialValue: selectedPriority,
               decoration: const InputDecoration(
                 labelText: 'Priority',
                 border: OutlineInputBorder(),
@@ -508,10 +597,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           ),
           TextButton(
             onPressed: () {
-              if (titleController.text.isNotEmpty && bodyController.text.isNotEmpty) {
+              if (titleController.text.isNotEmpty &&
+                  bodyController.text.isNotEmpty) {
                 context.read<NotificationProvider>().sendLocalNotification(
                   title: titleController.text,
                   body: bodyController.text,
+                  type: selectedType,
+                  priority: selectedPriority,
                 );
                 Navigator.of(context).pop();
               }
@@ -523,5 +615,3 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     );
   }
 }
-
-

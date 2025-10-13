@@ -134,8 +134,25 @@ class WeatherProvider extends ChangeNotifier {
 
   Future<void> loadWeatherAlerts() async {
     try {
-      _weatherAlerts = await _weatherService.getWeatherAlerts();
+      final previousIds = _weatherAlerts.map((a) => a.id).toSet();
+      final fetched = await _weatherService.getWeatherAlerts();
+      _weatherAlerts = fetched;
       _error = null;
+
+      // Notify on newly arrived high/critical alerts
+      for (final alert in fetched) {
+        if (!previousIds.contains(alert.id)) {
+          final sev = (alert.severity).toLowerCase();
+          if (sev == 'high' || sev == 'critical' || sev == 'severe') {
+            await NotificationService.sendWeatherAlert(
+              title: alert.title,
+              message: alert.description,
+              severity: alert.severity,
+              location: alert.location,
+            );
+          }
+        }
+      }
     } catch (e) {
       _error = e.toString();
     }

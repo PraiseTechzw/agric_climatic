@@ -438,7 +438,7 @@ class _SoilDataScreenState extends State<SoilDataScreen> {
               Expanded(
                 child: _buildPropertyItem(
                   'pH Level',
-                  '${soilData.ph.toStringAsFixed(1)}',
+                  soilData.ph.toStringAsFixed(1),
                   soilData.phDescription,
                   _getPHColor(soilData.ph),
                   Icons.science,

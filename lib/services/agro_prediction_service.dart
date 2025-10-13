@@ -1,5 +1,5 @@
 import 'dart:math';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/weather.dart';
 import '../models/agro_climatic_prediction.dart';
 import '../models/weather_alert.dart';
@@ -8,7 +8,7 @@ import '../services/notification_service.dart';
 import '../services/firebase_ai_service.dart';
 
 class AgroPredictionService {
-  final SupabaseClient _supabase = Supabase.instance.client;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAIService _aiService = FirebaseAIService.instance;
 
   // Zimbabwe crop data and climate zones
@@ -63,7 +63,24 @@ class AgroPredictionService {
       'soil_ph_min': 5.5,
       'soil_ph_max': 6.5,
     },
+    'groundnuts': {
+      'optimal_temp_min': 20.0,
+      'optimal_temp_max': 30.0,
+      'optimal_humidity_min': 50.0,
+      'optimal_humidity_max': 70.0,
+      'water_requirement': 450.0,
+      'growing_period': 120,
+      'soil_ph_min': 5.5,
+      'soil_ph_max': 7.0,
+    },
   };
+
+  String _normalizeCropName(String raw) {
+    final name = raw.toLowerCase().trim();
+    if (name == 'corn') return 'maize';
+    if (name == 'groundnut') return 'groundnuts';
+    return name;
+  }
 
   // 1. LONG-TERM AGRO-CLIMATIC DATA PREDICTION
   Future<AgroClimaticPrediction> generateLongTermPrediction({
@@ -165,15 +182,21 @@ class AgroPredictionService {
     DateTime? endDate,
   ]) async {
     try {
-      final response = await _supabase
-          .from('weather_data')
-          .select()
-          .eq('location_name', location)
-          .gte('date_time', startDate.toIso8601String())
-          .lte('date_time', (endDate ?? DateTime.now()).toIso8601String())
-          .order('date_time', ascending: true);
+      final query = _firestore
+          .collection('weather_data')
+          .where('location_name', isEqualTo: location)
+          .where(
+            'date_time',
+            isGreaterThanOrEqualTo: startDate.toIso8601String(),
+          )
+          .where(
+            'date_time',
+            isLessThanOrEqualTo: (endDate ?? DateTime.now()).toIso8601String(),
+          )
+          .orderBy('date_time', descending: false);
 
-      return response.map((json) => Weather.fromJson(json)).toList();
+      final snapshot = await query.get();
+      return snapshot.docs.map((doc) => Weather.fromJson(doc.data())).toList();
     } catch (e) {
       throw Exception(
         'Failed to fetch historical weather data for $location: $e',
@@ -340,11 +363,22 @@ class AgroPredictionService {
         season: season,
       );
 
-      // Extract the best crop from AI recommendations
-      final recommendedCrops =
-          aiRecommendations['recommended_crops'] as List<String>?;
-      if (recommendedCrops != null && recommendedCrops.isNotEmpty) {
-        return recommendedCrops.first;
+      // Extract the best crop from AI recommendations (defensive parsing)
+      final dynamic recDynamic = aiRecommendations['recommended_crops'];
+      if (recDynamic is List && recDynamic.isNotEmpty) {
+        if (recDynamic.first is String) {
+          final normalized = _normalizeCropName(recDynamic.first as String);
+          if (_cropData.containsKey(normalized)) return normalized;
+        }
+        if (recDynamic.first is Map) {
+          final first = recDynamic.first as Map;
+          final cropName = (first['crop'] ?? first['name'] ?? first['title'])
+              ?.toString();
+          if (cropName != null && cropName.isNotEmpty) {
+            final normalized = _normalizeCropName(cropName);
+            if (_cropData.containsKey(normalized)) return normalized;
+          }
+        }
       }
     } catch (e) {
       print('AI crop recommendation failed, using fallback: $e');
@@ -422,15 +456,25 @@ class AgroPredictionService {
         location: 'Zimbabwe',
       );
 
-      final highRiskPests = aiAssessment['high_risk_pests'] as List<String>?;
-      if (highRiskPests != null && highRiskPests.isNotEmpty) {
-        return 'high';
-      }
+      final dynamic pestRisksDynamic =
+          aiAssessment['pest_risks'] ?? aiAssessment['high_risk_pests'];
+      final bool hasHighPestRisk = pestRisksDynamic is List
+          ? pestRisksDynamic.any((e) {
+              if (e is String) return true;
+              if (e is Map) {
+                final level = e['risk_level']?.toString().toLowerCase();
+                return level == 'high';
+              }
+              return false;
+            })
+          : false;
+      if (hasHighPestRisk) return 'high';
 
-      final diseaseRisks = aiAssessment['disease_risks'] as List<String>?;
-      if (diseaseRisks != null && diseaseRisks.isNotEmpty) {
-        return 'medium';
-      }
+      final dynamic diseaseRisksDynamic = aiAssessment['disease_risks'];
+      final bool hasAnyDiseaseRisk = diseaseRisksDynamic is List
+          ? diseaseRisksDynamic.isNotEmpty
+          : false;
+      if (hasAnyDiseaseRisk) return 'medium';
 
       return 'low';
     } catch (e) {
@@ -473,9 +517,9 @@ class AgroPredictionService {
         location: 'Zimbabwe',
       );
 
-      final diseaseRisks = aiAssessment['disease_risks'] as List<String>?;
-      if (diseaseRisks != null && diseaseRisks.isNotEmpty) {
-        if (diseaseRisks.length > 2) return 'high';
+      final dynamic diseaseRisksDynamic = aiAssessment['disease_risks'];
+      if (diseaseRisksDynamic is List && diseaseRisksDynamic.isNotEmpty) {
+        if (diseaseRisksDynamic.length > 2) return 'high';
         return 'medium';
       }
 

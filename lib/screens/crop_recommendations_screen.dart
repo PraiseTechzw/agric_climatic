@@ -305,7 +305,7 @@ class _CropRecommendationsScreenState extends State<CropRecommendationsScreen> {
                 Expanded(
                   child: _buildSoilMetric(
                     'pH Level',
-                    '${_soilData!.phLevel.toStringAsFixed(1)}',
+                    _soilData!.phLevel.toStringAsFixed(1),
                     Icons.science,
                     Colors.green,
                   ),
@@ -708,7 +708,7 @@ class _CropRecommendationsScreenState extends State<CropRecommendationsScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             DropdownButtonFormField<String>(
-              value: _selectedSeason,
+              initialValue: _selectedSeason,
               decoration: const InputDecoration(labelText: 'Season'),
               items: _seasons.map((season) {
                 return DropdownMenuItem(value: season, child: Text(season));
@@ -721,7 +721,7 @@ class _CropRecommendationsScreenState extends State<CropRecommendationsScreen> {
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
-              value: _selectedRegion,
+              initialValue: _selectedRegion,
               decoration: const InputDecoration(labelText: 'Region'),
               items: _regions.map((region) {
                 return DropdownMenuItem(value: region, child: Text(region));

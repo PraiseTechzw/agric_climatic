@@ -1,11 +1,11 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/weather.dart';
 import '../models/agro_climatic_prediction.dart';
 import 'notification_service.dart';
 import 'logging_service.dart';
 
 class EnhancedAgroPredictionService {
-  final SupabaseClient _supabase = Supabase.instance.client;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   // Zimbabwe crop data and climate zones - removed unused field
 
@@ -168,15 +168,21 @@ class EnhancedAgroPredictionService {
     DateTime? endDate,
   ]) async {
     try {
-      final response = await _supabase
-          .from('weather_data')
-          .select()
-          .eq('location_name', location)
-          .gte('date_time', startDate.toIso8601String())
-          .lte('date_time', (endDate ?? DateTime.now()).toIso8601String())
-          .order('date_time', ascending: true);
+      final snapshot = await _firestore
+          .collection('weather_data')
+          .where('location_name', isEqualTo: location)
+          .where(
+            'date_time',
+            isGreaterThanOrEqualTo: startDate.toIso8601String(),
+          )
+          .where(
+            'date_time',
+            isLessThanOrEqualTo: (endDate ?? DateTime.now()).toIso8601String(),
+          )
+          .orderBy('date_time', descending: false)
+          .get();
 
-      return response.map((json) => Weather.fromJson(json)).toList();
+      return snapshot.docs.map((d) => Weather.fromJson(d.data())).toList();
     } catch (e) {
       LoggingService.error('Failed to fetch historical weather data', error: e);
       return [];
@@ -465,7 +471,7 @@ class EnhancedAgroPredictionService {
         await NotificationService.sendPatternAnalysis(
           title: 'Weather Pattern Analysis Complete',
           message:
-              'Found ${significantPatterns.length} significant ${patternType} patterns in $location',
+              'Found ${significantPatterns.length} significant $patternType patterns in $location',
           patternType: patternType,
           location: location,
         );
@@ -491,7 +497,7 @@ class EnhancedAgroPredictionService {
             alert.contains('flood')) {
           await NotificationService.sendWeatherAlert(
             title: 'Long-term Weather Alert',
-            message: '$alert (${monthsAhead} months ahead)',
+            message: '$alert ($monthsAhead months ahead)',
             severity: 'high',
             location: location,
           );
@@ -553,10 +559,12 @@ class EnhancedAgroPredictionService {
     final maxTemp = temps.reduce((a, b) => a > b ? a : b);
     final minTemp = temps.reduce((a, b) => a < b ? a : b);
 
-    if (maxTemp > avgTemp + 15)
+    if (maxTemp > avgTemp + 15) {
       anomalies.add('extreme_high_temperature_longterm');
-    if (minTemp < avgTemp - 15)
+    }
+    if (minTemp < avgTemp - 15) {
       anomalies.add('extreme_low_temperature_longterm');
+    }
 
     return anomalies;
   }

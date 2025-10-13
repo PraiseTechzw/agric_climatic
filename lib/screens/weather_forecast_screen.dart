@@ -754,7 +754,7 @@ class _WeatherForecastScreenState extends State<WeatherForecastScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             DropdownButtonFormField<String>(
-              value: _selectedPeriod,
+              initialValue: _selectedPeriod,
               decoration: const InputDecoration(labelText: 'Period'),
               items: _periods.map((period) {
                 return DropdownMenuItem(value: period, child: Text(period));
@@ -767,7 +767,7 @@ class _WeatherForecastScreenState extends State<WeatherForecastScreen> {
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
-              value: _selectedView,
+              initialValue: _selectedView,
               decoration: const InputDecoration(labelText: 'View'),
               items: _views.map((view) {
                 return DropdownMenuItem(value: view, child: Text(view));

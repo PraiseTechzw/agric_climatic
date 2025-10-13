@@ -741,11 +741,14 @@ class _PredictionsScreenState extends State<PredictionsScreen> {
                 size: 24,
               ),
               const SizedBox(width: 8),
-              Text(
-                '30-Day Long-Term Forecast',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+              Expanded(
+                child: Text(
+                  '30-Day Long-Term Forecast',
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                ),
               ),
             ],
           ),
