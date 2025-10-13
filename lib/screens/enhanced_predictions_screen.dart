@@ -99,7 +99,15 @@ class _EnhancedPredictionsScreenState extends State<EnhancedPredictionsScreen>
 
   Widget _buildTimeframeSelector() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+        ),
+      ),
       child: Row(
         children: [
           Expanded(
@@ -132,9 +140,14 @@ class _EnhancedPredictionsScreenState extends State<EnhancedPredictionsScreen>
       ),
       selected: isSelected,
       onSelected: (selected) {
-        setState(() {
-          _selectedTimeframe = timeframe;
-        });
+        if (selected && _selectedTimeframe != timeframe) {
+          setState(() {
+            _selectedTimeframe = timeframe;
+          });
+          // Regenerate prediction with new timeframe
+          _animationController.reset();
+          _generatePrediction();
+        }
       },
       selectedColor: Theme.of(context).colorScheme.primaryContainer,
       checkmarkColor: Theme.of(context).colorScheme.onPrimaryContainer,
@@ -1222,15 +1235,20 @@ class _EnhancedPredictionsScreenState extends State<EnhancedPredictionsScreen>
 
     // Generate intelligent insights
     final insights = <Map<String, dynamic>>[];
+    
+    // Timeframe-specific context
+    final timeframeText = _selectedTimeframe == 'annual' 
+        ? 'over the next 12 months' 
+        : 'over the next 3-6 months';
 
     // Temperature insight
     if (avgTemp > 23) {
       insights.add({
         'icon': Icons.wb_sunny,
         'color': Colors.orange,
-        'title': 'Warmer Season Ahead',
+        'title': 'Warmer Period Ahead',
         'message':
-            'Temperatures will be above average. Plan for increased irrigation needs.',
+            'Temperatures will be above average $timeframeText. Plan for increased irrigation and heat-tolerant varieties.',
       });
     } else if (avgTemp < 18) {
       insights.add({
@@ -1238,25 +1256,29 @@ class _EnhancedPredictionsScreenState extends State<EnhancedPredictionsScreen>
         'color': Colors.blue,
         'title': 'Cooler Conditions',
         'message':
-            'Lower temperatures expected. Ideal for cool-season crops like wheat.',
+            'Lower temperatures expected $timeframeText. Ideal for cool-season crops like wheat and barley.',
       });
     }
 
-    // Rainfall insight
-    if (totalRainfall > 450) {
+    // Rainfall insight - adjusted thresholds based on timeframe
+    final rainfallThresholdHigh = _selectedTimeframe == 'annual' ? 800 : 450;
+    final rainfallThresholdLow = _selectedTimeframe == 'annual' ? 600 : 300;
+    
+    if (totalRainfall > rainfallThresholdHigh) {
       insights.add({
         'icon': Icons.water_drop,
         'color': Colors.blue,
         'title': 'Good Rainfall Expected',
         'message':
-            'Above-average rainfall predicted. Excellent for crop establishment.',
+            'Above-average rainfall predicted $timeframeText. Excellent for crop establishment and growth.',
       });
-    } else if (totalRainfall < 300) {
+    } else if (totalRainfall < rainfallThresholdLow) {
       insights.add({
         'icon': Icons.water_drop_outlined,
         'color': Colors.orange,
         'title': 'Low Rainfall Alert',
-        'message': 'Below-average rainfall. Water conservation is critical.',
+        'message':
+            'Below-average rainfall $timeframeText. Water conservation and drought management are critical.',
       });
     }
 
@@ -1267,7 +1289,15 @@ class _EnhancedPredictionsScreenState extends State<EnhancedPredictionsScreen>
         'color': Colors.red,
         'title': 'High Drought Risk',
         'message':
-            'Significant drought risk detected. Prioritize drought-tolerant crops.',
+            'Significant drought risk detected. Prioritize drought-tolerant crops and implement water-saving techniques.',
+      });
+    } else if (droughtRisk['overallRisk'] > 0.4) {
+      insights.add({
+        'icon': Icons.info_outline,
+        'color': Colors.amber,
+        'title': 'Moderate Drought Risk',
+        'message':
+            'Some drought risk present. Monitor soil moisture and prepare backup irrigation systems.',
       });
     }
 
@@ -1277,9 +1307,28 @@ class _EnhancedPredictionsScreenState extends State<EnhancedPredictionsScreen>
       insights.add({
         'icon': Icons.agriculture,
         'color': Colors.green,
-        'title': 'Planting Season',
+        'title': 'Planting Season Active',
         'message':
-            'Optimal time for planting. Prepare fields and select suitable varieties.',
+            'Optimal time for planting. Prepare fields and select varieties suited to predicted conditions.',
+      });
+    } else if (currentMonth >= 3 && currentMonth <= 5) {
+      insights.add({
+        'icon': Icons.grass,
+        'color': Colors.brown,
+        'title': 'Harvest Season',
+        'message':
+            'Harvest period approaching. Plan storage and post-harvest management based on predictions.',
+      });
+    }
+    
+    // Annual-specific insight
+    if (_selectedTimeframe == 'annual') {
+      insights.add({
+        'icon': Icons.timeline,
+        'color': Colors.purple,
+        'title': 'Long-term Planning',
+        'message':
+            'Annual forecast enables strategic planning: crop rotation, input procurement, and market timing.',
       });
     }
 
@@ -1288,7 +1337,7 @@ class _EnhancedPredictionsScreenState extends State<EnhancedPredictionsScreen>
         'icon': Icons.check_circle,
         'color': Colors.green,
         'title': 'Normal Conditions',
-        'message': 'Weather patterns appear normal for the season.',
+        'message': 'Weather patterns appear normal for the season. Standard farming practices recommended.',
       });
     }
 
