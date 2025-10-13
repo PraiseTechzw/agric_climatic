@@ -14,10 +14,13 @@ class WeatherScreen extends StatefulWidget {
 }
 
 class _WeatherScreenState extends State<WeatherScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   final SoilDataService _soilService = SoilDataService();
   SoilData? _soilData;
   late TabController _tabController;
+  late AnimationController _cardAnimationController;
+  late Animation<double> _cardSlideAnimation;
+  late Animation<double> _cardFadeAnimation;
 
   // Forecast filters
   String _selectedPeriod = '7 Days';
@@ -29,16 +32,36 @@ class _WeatherScreenState extends State<WeatherScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+
+    // Initialize animations
+    _cardAnimationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+
+    _cardSlideAnimation = Tween<double>(begin: 30.0, end: 0.0).animate(
+      CurvedAnimation(
+        parent: _cardAnimationController,
+        curve: Curves.easeOutCubic,
+      ),
+    );
+
+    _cardFadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _cardAnimationController, curve: Curves.easeIn),
+    );
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // Try to detect location first, then load weather
       context.read<WeatherProvider>().detectLocation();
       _loadSoilData();
+      _cardAnimationController.forward();
     });
   }
 
   @override
   void dispose() {
     _tabController.dispose();
+    _cardAnimationController.dispose();
     super.dispose();
   }
 
@@ -214,11 +237,30 @@ class _WeatherScreenState extends State<WeatherScreen>
                       _buildLocationStatus(weatherProvider),
 
                       if (weatherProvider.currentWeather != null)
-                        _buildCurrentWeatherCard(
+                        AnimatedBuilder(
+                          animation: _cardAnimationController,
+                          builder: (context, child) {
+                            return Transform.translate(
+                              offset: Offset(0, _cardSlideAnimation.value),
+                              child: Opacity(
+                                opacity: _cardFadeAnimation.value,
+                                child: child,
+                              ),
+                            );
+                          },
+                          child: _buildCurrentWeatherCard(
+                            context,
+                            weatherProvider.currentWeather!,
+                          ),
+                        ),
+                      const SizedBox(height: 20),
+                      // Smart Insights based on current weather
+                      if (weatherProvider.currentWeather != null)
+                        _buildWeatherInsights(
                           context,
                           weatherProvider.currentWeather!,
                         ),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 20),
                       // Weather Alerts Section - Always show for better visibility
                       _buildAlertsSection(
                         context,
@@ -1379,6 +1421,209 @@ class _WeatherScreenState extends State<WeatherScreen>
             context,
           ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
         ),
+      ],
+    );
+  }
+
+  // Smart Weather Insights
+  Widget _buildWeatherInsights(BuildContext context, dynamic weather) {
+    final insights = <Map<String, dynamic>>[];
+    final temp = weather.temperature;
+    final humidity = weather.humidity;
+    final windSpeed = weather.windSpeed;
+    final feelsLike = weather.feelsLike;
+    final uvIndex = weather.uvIndex ?? 0;
+
+    // Temperature insights
+    if (temp > 30) {
+      insights.add({
+        'icon': Icons.wb_sunny,
+        'color': Colors.red,
+        'title': 'Hot Conditions',
+        'message':
+            'High temperature. Increase irrigation frequency and monitor crop stress.',
+      });
+    } else if (temp < 10) {
+      insights.add({
+        'icon': Icons.ac_unit,
+        'color': Colors.blue,
+        'title': 'Cold Alert',
+        'message':
+            'Low temperature. Protect sensitive crops from potential frost damage.',
+      });
+    }
+
+    // Feels like difference
+    if ((feelsLike - temp).abs() > 5) {
+      insights.add({
+        'icon': Icons.thermostat,
+        'color': Colors.orange,
+        'title': 'Feels Different',
+        'message':
+            'Actual temperature differs from feels-like by ${(feelsLike - temp).abs().toStringAsFixed(1)}°C. Factor this for outdoor work planning.',
+      });
+    }
+
+    // Humidity insights
+    if (humidity > 80) {
+      insights.add({
+        'icon': Icons.water_drop,
+        'color': Colors.blue,
+        'title': 'High Humidity',
+        'message':
+            'Elevated moisture levels. Monitor for fungal diseases and reduce irrigation.',
+      });
+    } else if (humidity < 30) {
+      insights.add({
+        'icon': Icons.water_drop_outlined,
+        'color': Colors.orange,
+        'title': 'Low Humidity',
+        'message':
+            'Dry air conditions. Increase watering and consider mulching to retain soil moisture.',
+      });
+    }
+
+    // Wind insights
+    if (windSpeed > 30) {
+      insights.add({
+        'icon': Icons.air,
+        'color': Colors.purple,
+        'title': 'Strong Winds',
+        'message':
+            'High wind speeds. Delay spraying operations and secure farm structures.',
+      });
+    }
+
+    // UV Index insights
+    if (uvIndex > 8) {
+      insights.add({
+        'icon': Icons.sunny,
+        'color': Colors.red,
+        'title': 'Very High UV',
+        'message':
+            'Extreme UV levels. Ensure sun protection for workers and livestock.',
+      });
+    } else if (uvIndex > 5) {
+      insights.add({
+        'icon': Icons.sunny_snowing,
+        'color': Colors.amber,
+        'title': 'High UV',
+        'message':
+            'Elevated UV levels. Take sun protection measures during midday.',
+      });
+    }
+
+    // Optimal conditions
+    if (temp >= 18 &&
+        temp <= 28 &&
+        humidity >= 40 &&
+        humidity <= 70 &&
+        windSpeed < 15) {
+      insights.add({
+        'icon': Icons.check_circle,
+        'color': Colors.green,
+        'title': 'Ideal Conditions',
+        'message':
+            'Perfect weather for most farming activities. Good time for planting and spraying.',
+      });
+    }
+
+    if (insights.isEmpty) {
+      insights.add({
+        'icon': Icons.info_outline,
+        'color': Colors.blue,
+        'title': 'Normal Conditions',
+        'message':
+            'Weather conditions are within normal range for farming operations.',
+      });
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.amber.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.lightbulb, color: Colors.amber, size: 20),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              'Weather Insights',
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        ...insights
+            .take(2)
+            .map(
+              (insight) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        (insight['color'] as Color).withOpacity(0.08),
+                        (insight['color'] as Color).withOpacity(0.02),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: (insight['color'] as Color).withOpacity(0.25),
+                      width: 1.2,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: insight['color'] as Color,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(
+                          insight['icon'] as IconData,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              insight['title'] as String,
+                              style: Theme.of(context).textTheme.titleSmall
+                                  ?.copyWith(fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              insight['message'] as String,
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
+                                    color: Colors.grey[700],
+                                    height: 1.3,
+                                  ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
       ],
     );
   }
