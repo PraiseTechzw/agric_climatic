@@ -28,6 +28,10 @@ class _WeatherScreenState extends State<WeatherScreen>
   final List<String> _periods = ['3 Days', '7 Days', '14 Days'];
   final List<String> _views = ['Daily', 'Hourly'];
 
+  // Alert management
+  final Set<String> _expandedAlerts = {};
+  final Set<String> _dismissedAlerts = {};
+
   @override
   void initState() {
     super.initState();
@@ -743,99 +747,421 @@ class _WeatherScreenState extends State<WeatherScreen>
   }
 
   Widget _buildAlertCard(BuildContext context, dynamic alert) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            _severityColor(alert.severity).withOpacity(0.12),
-            _severityColor(alert.severity).withOpacity(0.05),
+    final alertId = '${alert.title}_${alert.date}';
+
+    // Skip dismissed alerts
+    if (_dismissedAlerts.contains(alertId)) {
+      return const SizedBox.shrink();
+    }
+
+    final isExpanded = _expandedAlerts.contains(alertId);
+    final severityColor = _severityColor(alert.severity);
+    final severityLevel = _getSeverityLevel(alert.severity);
+
+    return Dismissible(
+      key: Key(alertId),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20),
+        decoration: BoxDecoration(
+          color: Colors.red,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: const Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.delete_outline, color: Colors.white, size: 28),
+            SizedBox(height: 4),
+            Text(
+              'Dismiss',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 12,
+              ),
+            ),
           ],
         ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: _severityColor(alert.severity).withOpacity(0.3),
-          width: 1,
-        ),
       ),
-      child: Card(
-        elevation: 0,
-        color: Colors.transparent,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: _severityColor(alert.severity).withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(
-                  _alertIcon(alert.type),
-                  color: _severityColor(alert.severity),
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
+      onDismissed: (direction) {
+        setState(() {
+          _dismissedAlerts.add(alertId);
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Alert dismissed: ${alert.title}'),
+            action: SnackBarAction(
+              label: 'UNDO',
+              onPressed: () {
+                setState(() {
+                  _dismissedAlerts.remove(alertId);
+                });
+              },
+            ),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              severityColor.withOpacity(0.12),
+              severityColor.withOpacity(0.05),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: severityColor.withOpacity(0.3), width: 2),
+          boxShadow: [
+            BoxShadow(
+              color: severityColor.withOpacity(0.15),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () {
+                setState(() {
+                  if (isExpanded) {
+                    _expandedAlerts.remove(alertId);
+                  } else {
+                    _expandedAlerts.add(alertId);
+                  }
+                });
+              },
+              child: Padding(
+                padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Header Row
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          child: Text(
-                            alert.title ?? 'Alert',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.titleMedium
-                                ?.copyWith(fontWeight: FontWeight.w700),
+                        // Severity indicator strip
+                        Container(
+                          width: 4,
+                          height: 60,
+                          decoration: BoxDecoration(
+                            color: severityColor,
+                            borderRadius: BorderRadius.circular(2),
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 12),
+                        // Icon
                         Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
+                          padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: _severityColor(
-                              alert.severity,
-                            ).withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(10),
+                            color: severityColor,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: severityColor.withOpacity(0.3),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
                           ),
-                          child: Text(
-                            _formatRelativeTime(alert.date),
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(
-                                  color: _severityColor(alert.severity),
-                                  fontWeight: FontWeight.w600,
-                                ),
+                          child: Icon(
+                            _alertIcon(alert.type),
+                            color: Colors.white,
+                            size: 24,
                           ),
+                        ),
+                        const SizedBox(width: 12),
+                        // Content
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      alert.title ?? 'Alert',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleMedium
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                    ),
+                                  ),
+                                  // Severity badge
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: severityColor,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          severityLevel['icon'] as IconData,
+                                          color: Colors.white,
+                                          size: 12,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          severityLevel['label'] as String,
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 10,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                alert.description ?? '',
+                                maxLines: isExpanded ? null : 2,
+                                overflow: isExpanded
+                                    ? TextOverflow.visible
+                                    : TextOverflow.ellipsis,
+                                style: Theme.of(context).textTheme.bodyMedium
+                                    ?.copyWith(
+                                      color: Colors.grey[700],
+                                      height: 1.4,
+                                    ),
+                              ),
+                              const SizedBox(height: 6),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.access_time,
+                                    size: 14,
+                                    color: Colors.grey[600],
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    _formatRelativeTime(alert.date),
+                                    style: Theme.of(context).textTheme.bodySmall
+                                        ?.copyWith(
+                                          color: Colors.grey[600],
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        // Expand icon
+                        Icon(
+                          isExpanded
+                              ? Icons.keyboard_arrow_up
+                              : Icons.keyboard_arrow_down,
+                          color: severityColor,
+                          size: 24,
                         ),
                       ],
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      alert.description ?? '',
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(
-                        context,
-                      ).textTheme.bodyMedium?.copyWith(color: Colors.grey[700]),
-                    ),
+
+                    // Expanded content
+                    if (isExpanded) ...[
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: severityColor.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: severityColor.withOpacity(0.2),
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.info_outline,
+                                  size: 16,
+                                  color: severityColor,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'Recommended Actions',
+                                  style: Theme.of(context).textTheme.titleSmall
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                        color: severityColor,
+                                      ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            ..._getAlertActions(alert.type).map(
+                              (action) => Padding(
+                                padding: const EdgeInsets.only(bottom: 4),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Container(
+                                      margin: const EdgeInsets.only(top: 6),
+                                      width: 6,
+                                      height: 6,
+                                      decoration: BoxDecoration(
+                                        color: severityColor,
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        action,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodySmall
+                                            ?.copyWith(
+                                              color: Colors.grey[800],
+                                              height: 1.4,
+                                            ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      // Action buttons
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () {
+                                setState(() {
+                                  _dismissedAlerts.add(alertId);
+                                });
+                              },
+                              icon: const Icon(Icons.check, size: 18),
+                              label: const Text('Acknowledge'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: severityColor,
+                                side: BorderSide(color: severityColor),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                // Navigate to recommendations
+                                DefaultTabController.of(context).animateTo(2);
+                              },
+                              icon: const Icon(
+                                Icons.lightbulb_outline,
+                                size: 18,
+                              ),
+                              label: const Text('View Tips'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: severityColor,
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
               ),
-            ],
+            ),
           ),
         ),
       ),
     );
+  }
+
+  Map<String, dynamic> _getSeverityLevel(String severity) {
+    switch (severity.toLowerCase()) {
+      case 'severe':
+      case 'extreme':
+        return {'label': 'SEVERE', 'icon': Icons.warning};
+      case 'moderate':
+        return {'label': 'MODERATE', 'icon': Icons.error_outline};
+      default:
+        return {'label': 'MINOR', 'icon': Icons.info};
+    }
+  }
+
+  List<String> _getAlertActions(String alertType) {
+    switch (alertType.toLowerCase()) {
+      case 'rain':
+      case 'heavy rain':
+        return [
+          'Ensure proper drainage in fields to prevent waterlogging',
+          'Postpone irrigation activities',
+          'Check and secure farm structures and equipment',
+          'Harvest ripe crops before heavy rainfall if possible',
+        ];
+      case 'drought':
+      case 'dry':
+        return [
+          'Implement water conservation measures',
+          'Increase irrigation frequency for critical crops',
+          'Apply mulch to retain soil moisture',
+          'Consider drought-tolerant crop varieties for next season',
+        ];
+      case 'heat':
+      case 'high temperature':
+        return [
+          'Water crops during early morning or evening hours',
+          'Provide shade for sensitive crops and livestock',
+          'Monitor crops for heat stress symptoms',
+          'Avoid heavy field work during peak heat hours',
+        ];
+      case 'wind':
+      case 'strong wind':
+        return [
+          'Secure loose farm equipment and structures',
+          'Postpone spraying operations',
+          'Check and reinforce support for tall crops',
+          'Keep livestock in sheltered areas',
+        ];
+      case 'frost':
+      case 'cold':
+        return [
+          'Protect sensitive crops with covers',
+          'Move potted plants to sheltered locations',
+          'Ensure livestock have adequate shelter and bedding',
+          'Drain irrigation systems to prevent freezing',
+        ];
+      default:
+        return [
+          'Monitor weather conditions closely',
+          'Follow standard safety protocols',
+          'Keep emergency contacts readily available',
+          'Check local agricultural extension updates',
+        ];
+    }
   }
 
   Widget _buildWeatherDetailsCard(BuildContext context, weather) {
