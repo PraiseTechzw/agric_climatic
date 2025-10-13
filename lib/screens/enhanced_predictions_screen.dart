@@ -1235,10 +1235,10 @@ class _EnhancedPredictionsScreenState extends State<EnhancedPredictionsScreen>
 
     // Generate intelligent insights
     final insights = <Map<String, dynamic>>[];
-    
+
     // Timeframe-specific context
-    final timeframeText = _selectedTimeframe == 'annual' 
-        ? 'over the next 12 months' 
+    final timeframeText = _selectedTimeframe == 'annual'
+        ? 'over the next 12 months'
         : 'over the next 3-6 months';
 
     // Temperature insight
@@ -1263,7 +1263,7 @@ class _EnhancedPredictionsScreenState extends State<EnhancedPredictionsScreen>
     // Rainfall insight - adjusted thresholds based on timeframe
     final rainfallThresholdHigh = _selectedTimeframe == 'annual' ? 800 : 450;
     final rainfallThresholdLow = _selectedTimeframe == 'annual' ? 600 : 300;
-    
+
     if (totalRainfall > rainfallThresholdHigh) {
       insights.add({
         'icon': Icons.water_drop,
@@ -1320,7 +1320,7 @@ class _EnhancedPredictionsScreenState extends State<EnhancedPredictionsScreen>
             'Harvest period approaching. Plan storage and post-harvest management based on predictions.',
       });
     }
-    
+
     // Annual-specific insight
     if (_selectedTimeframe == 'annual') {
       insights.add({
@@ -1337,7 +1337,8 @@ class _EnhancedPredictionsScreenState extends State<EnhancedPredictionsScreen>
         'icon': Icons.check_circle,
         'color': Colors.green,
         'title': 'Normal Conditions',
-        'message': 'Weather patterns appear normal for the season. Standard farming practices recommended.',
+        'message':
+            'Weather patterns appear normal for the season. Standard farming practices recommended.',
       });
     }
 
