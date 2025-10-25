@@ -423,11 +423,14 @@ class _IrrigationScheduleScreenState extends State<IrrigationScheduleScreen> {
               children: [
                 Icon(Icons.thermostat, color: Colors.blue[600], size: 24),
                 const SizedBox(width: 12),
-                Text(
-                  'Current Conditions',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                Flexible(
+                  child: Text(
+                    'Current Conditions',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ],
             ),
@@ -532,11 +535,14 @@ class _IrrigationScheduleScreenState extends State<IrrigationScheduleScreen> {
               children: [
                 Icon(Icons.lightbulb, color: Colors.orange[600], size: 24),
                 const SizedBox(width: 12),
-                Text(
-                  'Irrigation Recommendation',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                Flexible(
+                  child: Text(
+                    'Irrigation Recommendation',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ],
             ),
@@ -562,13 +568,16 @@ class _IrrigationScheduleScreenState extends State<IrrigationScheduleScreen> {
                     children: [
                       Icon(Icons.check_circle, color: Colors.green, size: 20),
                       const SizedBox(width: 8),
-                      Text(
-                        'Recommended Action',
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.green[700],
-                            ),
+                      Flexible(
+                        child: Text(
+                          'Recommended Action',
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.green[700],
+                              ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     ],
                   ),
@@ -809,11 +818,14 @@ class _IrrigationScheduleScreenState extends State<IrrigationScheduleScreen> {
             children: [
               Icon(icon, color: color, size: 16),
               const SizedBox(width: 4),
-              Text(
-                label,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: color,
+              Flexible(
+                child: Text(
+                  label,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: color,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],

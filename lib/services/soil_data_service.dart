@@ -1,6 +1,8 @@
 import '../models/soil_data.dart';
 import 'zimbabwe_api_service.dart';
 import 'firebase_service.dart';
+import 'notification_service.dart';
+import 'logging_service.dart';
 
 class SoilDataService {
   // Using OpenWeatherMap's One Call API for additional data
@@ -305,6 +307,174 @@ class SoilDataService {
       return 'Moderate';
     } else {
       return 'Good';
+    }
+  }
+
+  // Trigger soil-based notifications
+  static Future<void> triggerSoilNotifications(
+    SoilData soilData,
+    String location,
+  ) async {
+    try {
+      // pH level notifications
+      await _checkPHLevel(soilData, location);
+
+      // Moisture level notifications
+      await _checkMoistureLevel(soilData, location);
+
+      // Temperature notifications
+      await _checkSoilTemperature(soilData, location);
+
+      // Nutrient level notifications
+      await _checkNutrientLevels(soilData, location);
+
+      LoggingService.info('Soil notifications triggered successfully');
+    } catch (e) {
+      LoggingService.error('Failed to trigger soil notifications', error: e);
+    }
+  }
+
+  // Check pH level and send notifications
+  static Future<void> _checkPHLevel(SoilData soilData, String location) async {
+    final ph = soilData.phLevel;
+
+    if (ph < 5.5) {
+      await NotificationService.sendAgroRecommendation(
+        title: 'Soil pH Too Low',
+        message:
+            'Soil pH is $ph (acidic). Add lime to raise pH. Most crops prefer pH 6.0-7.0.',
+        cropType: 'General',
+        location: location,
+      );
+    } else if (ph > 8.0) {
+      await NotificationService.sendAgroRecommendation(
+        title: 'Soil pH Too High',
+        message:
+            'Soil pH is $ph (alkaline). Add sulfur or organic matter to lower pH.',
+        cropType: 'General',
+        location: location,
+      );
+    } else if (ph >= 6.0 && ph <= 7.0) {
+      await NotificationService.sendAgroRecommendation(
+        title: 'Optimal Soil pH',
+        message:
+            'Soil pH is $ph (optimal). Perfect for most crops. Maintain current pH levels.',
+        cropType: 'General',
+        location: location,
+      );
+    }
+  }
+
+  // Check soil drainage and send notifications
+  static Future<void> _checkMoistureLevel(
+    SoilData soilData,
+    String location,
+  ) async {
+    final drainage = soilData.drainage;
+
+    if (drainage.toLowerCase() == 'poor') {
+      await NotificationService.sendAgroRecommendation(
+        title: 'Poor Soil Drainage',
+        message:
+            'Soil drainage is poor. Improve drainage to prevent waterlogging and root rot.',
+        cropType: 'General',
+        location: location,
+      );
+    } else if (drainage.toLowerCase() == 'excellent') {
+      await NotificationService.sendAgroRecommendation(
+        title: 'Excellent Soil Drainage',
+        message: 'Soil drainage is excellent. Perfect for most crops.',
+        cropType: 'General',
+        location: location,
+      );
+    }
+  }
+
+  // Check soil temperature and send notifications
+  static Future<void> _checkSoilTemperature(
+    SoilData soilData,
+    String location,
+  ) async {
+    final temp = soilData.soilTemperature;
+
+    if (temp < 10) {
+      await NotificationService.sendAgroRecommendation(
+        title: 'Cold Soil Temperature',
+        message:
+            'Soil temperature is ${temp.toStringAsFixed(1)}°C (too cold). Delay planting until soil warms up.',
+        cropType: 'General',
+        location: location,
+      );
+    } else if (temp > 35) {
+      await NotificationService.sendAgroRecommendation(
+        title: 'Hot Soil Temperature',
+        message:
+            'Soil temperature is ${temp.toStringAsFixed(1)}°C (too hot). Use mulch to cool soil and protect roots.',
+        cropType: 'General',
+        location: location,
+      );
+    } else if (temp >= 18 && temp <= 25) {
+      await NotificationService.sendAgroRecommendation(
+        title: 'Optimal Soil Temperature',
+        message:
+            'Soil temperature is ${temp.toStringAsFixed(1)}°C (optimal). Perfect for seed germination and root growth.',
+        cropType: 'General',
+        location: location,
+      );
+    }
+  }
+
+  // Check nutrient levels and send notifications
+  static Future<void> _checkNutrientLevels(
+    SoilData soilData,
+    String location,
+  ) async {
+    final nitrogen = soilData.nitrogen;
+    final phosphorus = soilData.phosphorus;
+    final potassium = soilData.potassium;
+
+    // Nitrogen check
+    if (nitrogen < 20) {
+      await NotificationService.sendAgroRecommendation(
+        title: 'Low Nitrogen Level',
+        message:
+            'Nitrogen level is ${nitrogen.toStringAsFixed(1)} mg/kg (low). Apply nitrogen fertilizer for healthy plant growth.',
+        cropType: 'General',
+        location: location,
+      );
+    }
+
+    // Phosphorus check
+    if (phosphorus < 15) {
+      await NotificationService.sendAgroRecommendation(
+        title: 'Low Phosphorus Level',
+        message:
+            'Phosphorus level is ${phosphorus.toStringAsFixed(1)} mg/kg (low). Apply phosphorus fertilizer for root development.',
+        cropType: 'General',
+        location: location,
+      );
+    }
+
+    // Potassium check
+    if (potassium < 100) {
+      await NotificationService.sendAgroRecommendation(
+        title: 'Low Potassium Level',
+        message:
+            'Potassium level is ${potassium.toStringAsFixed(1)} mg/kg (low). Apply potassium fertilizer for disease resistance.',
+        cropType: 'General',
+        location: location,
+      );
+    }
+
+    // Overall nutrient balance
+    if (nitrogen >= 20 && phosphorus >= 15 && potassium >= 100) {
+      await NotificationService.sendAgroRecommendation(
+        title: 'Good Nutrient Balance',
+        message:
+            'Soil nutrients are well balanced. Maintain current fertilization schedule.',
+        cropType: 'General',
+        location: location,
+      );
     }
   }
 }

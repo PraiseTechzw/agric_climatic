@@ -1063,4 +1063,118 @@ class AgroPredictionService {
       };
     }
   }
+
+  // Trigger prediction-based notifications
+  static Future<void> triggerPredictionNotifications(
+    AgroClimaticPrediction prediction,
+    String location,
+  ) async {
+    try {
+      // Pest risk notifications
+      await _checkPestRisk(prediction, location);
+
+      // Disease risk notifications
+      await _checkDiseaseRisk(prediction, location);
+
+      // Optimal planting notifications
+      await _checkOptimalPlanting(prediction, location);
+
+      // Harvest timing notifications
+      await _checkHarvestTiming(prediction, location);
+
+      LoggingService.info('Prediction notifications triggered successfully');
+    } catch (e) {
+      LoggingService.error(
+        'Failed to trigger prediction notifications',
+        error: e,
+      );
+    }
+  }
+
+  // Check pest risk and send notifications
+  static Future<void> _checkPestRisk(
+    AgroClimaticPrediction prediction,
+    String location,
+  ) async {
+    final pestRisk = prediction.pestRisk;
+
+    if (pestRisk == 'high') {
+      await NotificationService.sendAgroRecommendation(
+        title: 'High Pest Risk',
+        message:
+            'Pest risk is HIGH. Implement pest control measures and monitor crops closely.',
+        cropType: 'General',
+        location: location,
+      );
+    } else if (pestRisk == 'medium') {
+      await NotificationService.sendAgroRecommendation(
+        title: 'Moderate Pest Risk',
+        message:
+            'Pest risk is MODERATE. Monitor crops and prepare pest control if needed.',
+        cropType: 'General',
+        location: location,
+      );
+    }
+  }
+
+  // Check disease risk and send notifications
+  static Future<void> _checkDiseaseRisk(
+    AgroClimaticPrediction prediction,
+    String location,
+  ) async {
+    final diseaseRisk = prediction.diseaseRisk;
+
+    if (diseaseRisk == 'high') {
+      await NotificationService.sendAgroRecommendation(
+        title: 'High Disease Risk',
+        message:
+            'Disease risk is HIGH. Implement disease prevention measures and improve air circulation.',
+        cropType: 'General',
+        location: location,
+      );
+    } else if (diseaseRisk == 'medium') {
+      await NotificationService.sendAgroRecommendation(
+        title: 'Moderate Disease Risk',
+        message:
+            'Disease risk is MODERATE. Monitor crops and maintain good hygiene practices.',
+        cropType: 'General',
+        location: location,
+      );
+    }
+  }
+
+  // Check optimal planting conditions
+  static Future<void> _checkOptimalPlanting(
+    AgroClimaticPrediction prediction,
+    String location,
+  ) async {
+    final cropRecommendation = prediction.cropRecommendation;
+
+    if (cropRecommendation.isNotEmpty) {
+      await NotificationService.sendAgroRecommendation(
+        title: 'Optimal Planting Conditions',
+        message:
+            'Current conditions are ideal for planting: $cropRecommendation. Consider starting your planting season.',
+        cropType: 'General',
+        location: location,
+      );
+    }
+  }
+
+  // Check harvest timing
+  static Future<void> _checkHarvestTiming(
+    AgroClimaticPrediction prediction,
+    String location,
+  ) async {
+    final harvestingAdvice = prediction.harvestingAdvice;
+
+    if (harvestingAdvice.isNotEmpty) {
+      await NotificationService.sendAgroRecommendation(
+        title: 'Harvest Timing Advice',
+        message: harvestingAdvice,
+        cropType: 'General',
+        location: location,
+      );
+    }
+  }
 }

@@ -136,7 +136,11 @@ class _EnhancedPredictionsScreenState extends State<EnhancedPredictionsScreen>
     return FilterChip(
       label: Row(
         mainAxisSize: MainAxisSize.min,
-        children: [Icon(icon, size: 16), const SizedBox(width: 4), Text(label)],
+        children: [
+          Icon(icon, size: 16),
+          const SizedBox(width: 4),
+          Flexible(child: Text(label, overflow: TextOverflow.ellipsis)),
+        ],
       ),
       selected: isSelected,
       onSelected: (selected) {
@@ -431,13 +435,16 @@ class _EnhancedPredictionsScreenState extends State<EnhancedPredictionsScreen>
                   color: Theme.of(context).colorScheme.primary,
                 ),
                 const SizedBox(width: 8),
-                Text(
-                  _predictionData != null
-                      ? 'RBSWSA Farming Recommendations'
-                      : 'Seasonal Farming Recommendations',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                Flexible(
+                  child: Text(
+                    _predictionData != null
+                        ? 'RBSWSA Farming Recommendations'
+                        : 'Seasonal Farming Recommendations',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ],
             ),
@@ -867,11 +874,14 @@ class _EnhancedPredictionsScreenState extends State<EnhancedPredictionsScreen>
               children: [
                 Icon(riskIcon, color: riskColor),
                 const SizedBox(width: 8),
-                Text(
-                  'Drought Risk Assessment',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                Flexible(
+                  child: Text(
+                    'Drought Risk Assessment',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ],
             ),
@@ -964,11 +974,14 @@ class _EnhancedPredictionsScreenState extends State<EnhancedPredictionsScreen>
               children: [
                 Icon(Icons.thermostat, color: Colors.orange, size: 24),
                 const SizedBox(width: 8),
-                Text(
-                  'Temperature Trend',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                Flexible(
+                  child: Text(
+                    'Temperature Trend',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ],
             ),
@@ -1111,11 +1124,14 @@ class _EnhancedPredictionsScreenState extends State<EnhancedPredictionsScreen>
               children: [
                 Icon(Icons.water_drop, color: Colors.blue, size: 24),
                 const SizedBox(width: 8),
-                Text(
-                  'Rainfall Forecast',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                Flexible(
+                  child: Text(
+                    'Rainfall Forecast',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ],
             ),
@@ -1355,11 +1371,14 @@ class _EnhancedPredictionsScreenState extends State<EnhancedPredictionsScreen>
           children: [
             Icon(Icons.lightbulb, color: Colors.amber, size: 24),
             const SizedBox(width: 8),
-            Text(
-              'Smart Insights',
-              style: Theme.of(
-                context,
-              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+            Flexible(
+              child: Text(
+                'Smart Insights',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           ],
         ),

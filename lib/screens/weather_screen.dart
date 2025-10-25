@@ -118,7 +118,9 @@ class _WeatherScreenState extends State<WeatherScreen>
               ),
             ),
             const SizedBox(width: 8),
-            const Text('Weather'),
+            const Flexible(
+              child: Text('Weather', overflow: TextOverflow.ellipsis),
+            ),
           ],
         ),
         bottom: TabBar(
@@ -354,11 +356,14 @@ class _WeatherScreenState extends State<WeatherScreen>
                   size: 24,
                 ),
                 const SizedBox(width: 12),
-                Text(
-                  'Weather Forecast',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                Flexible(
+                  child: Text(
+                    'Weather Forecast',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ],
             ),
@@ -1287,10 +1292,13 @@ class _WeatherScreenState extends State<WeatherScreen>
                 children: [
                   Icon(Icons.terrain, color: Colors.brown[600], size: 24),
                   const SizedBox(width: 8),
-                  Text(
-                    'Soil Conditions',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
+                  Flexible(
+                    child: Text(
+                      'Soil Conditions',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],

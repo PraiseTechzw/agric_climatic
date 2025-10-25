@@ -49,6 +49,9 @@ class WeatherProvider extends ChangeNotifier {
       if (_currentWeather != null) {
         await FirebaseService.saveZimbabweWeatherData(_currentWeather!);
         await OfflineStorageService.saveWeatherData(_currentWeather!);
+
+        // Trigger automatic notifications based on weather conditions
+        await _triggerWeatherNotifications(_currentWeather!);
       }
 
       _error = null;
@@ -214,5 +217,217 @@ class WeatherProvider extends ChangeNotifier {
   void _setLoading(bool loading) {
     _isLoading = loading;
     notifyListeners();
+  }
+
+  // Trigger automatic notifications based on weather conditions
+  Future<void> _triggerWeatherNotifications(Weather weather) async {
+    try {
+      // Temperature-based notifications
+      await _checkTemperatureAlerts(weather);
+
+      // Humidity-based notifications
+      await _checkHumidityAlerts(weather);
+
+      // Rainfall-based notifications
+      await _checkRainfallAlerts(weather);
+
+      // Wind-based notifications
+      await _checkWindAlerts(weather);
+
+      // UV Index notifications
+      await _checkUVIndexAlerts(weather);
+
+      // Daily farming tips
+      await _sendDailyFarmingTips();
+
+      LoggingService.info('Weather notifications triggered successfully');
+    } catch (e) {
+      LoggingService.error('Failed to trigger weather notifications', error: e);
+    }
+  }
+
+  // Check temperature alerts
+  Future<void> _checkTemperatureAlerts(Weather weather) async {
+    final temp = weather.temperature;
+
+    if (temp > 35) {
+      await NotificationService.sendWeatherAlert(
+        title: 'Extreme Heat Warning',
+        message:
+            'Temperature is ${temp.toStringAsFixed(1)}°C. Avoid outdoor work during peak hours (10 AM - 4 PM). Increase irrigation frequency and provide shade for livestock.',
+        severity: 'high',
+        location: _currentLocation,
+        sendSmsIfCritical: true,
+      );
+    } else if (temp > 30) {
+      await NotificationService.sendAgroRecommendation(
+        title: 'Hot Weather Advisory',
+        message:
+            'Temperature is ${temp.toStringAsFixed(1)}°C. Consider early morning or evening farming activities. Increase watering for crops.',
+        cropType: 'General',
+        location: _currentLocation,
+      );
+    } else if (temp < 5) {
+      await NotificationService.sendWeatherAlert(
+        title: 'Frost Risk Alert',
+        message:
+            'Temperature is ${temp.toStringAsFixed(1)}°C. Protect sensitive crops from frost damage. Cover plants or move them indoors.',
+        severity: 'high',
+        location: _currentLocation,
+        sendSmsIfCritical: true,
+      );
+    } else if (temp < 10) {
+      await NotificationService.sendAgroRecommendation(
+        title: 'Cold Weather Advisory',
+        message:
+            'Temperature is ${temp.toStringAsFixed(1)}°C. Consider delaying planting of sensitive crops. Monitor for frost damage.',
+        cropType: 'General',
+        location: _currentLocation,
+      );
+    }
+  }
+
+  // Check humidity alerts
+  Future<void> _checkHumidityAlerts(Weather weather) async {
+    final humidity = weather.humidity;
+
+    if (humidity > 85) {
+      await NotificationService.sendAgroRecommendation(
+        title: 'High Humidity Alert',
+        message:
+            'Humidity is ${humidity.toStringAsFixed(0)}%. High risk of fungal diseases. Avoid watering and ensure good air circulation.',
+        cropType: 'General',
+        location: _currentLocation,
+      );
+    } else if (humidity < 30) {
+      await NotificationService.sendAgroRecommendation(
+        title: 'Low Humidity Alert',
+        message:
+            'Humidity is ${humidity.toStringAsFixed(0)}%. Very dry conditions. Increase irrigation frequency and consider mulching.',
+        cropType: 'General',
+        location: _currentLocation,
+      );
+    }
+  }
+
+  // Check rainfall alerts
+  Future<void> _checkRainfallAlerts(Weather weather) async {
+    final precipitation = weather.precipitation;
+
+    if (precipitation > 20) {
+      await NotificationService.sendWeatherAlert(
+        title: 'Heavy Rainfall Warning',
+        message:
+            'Heavy rainfall expected (${precipitation.toStringAsFixed(1)}mm). Avoid field work. Check drainage systems and protect crops from waterlogging.',
+        severity: 'high',
+        location: _currentLocation,
+        sendSmsIfCritical: true,
+      );
+    } else if (precipitation > 10) {
+      await NotificationService.sendAgroRecommendation(
+        title: 'Rainfall Advisory',
+        message:
+            'Rainfall expected (${precipitation.toStringAsFixed(1)}mm). Good time for planting. Reduce irrigation accordingly.',
+        cropType: 'General',
+        location: _currentLocation,
+      );
+    } else if (precipitation == 0 && _isDrySeason()) {
+      await NotificationService.sendAgroRecommendation(
+        title: 'Dry Season Reminder',
+        message:
+            'No rainfall expected. Ensure adequate irrigation for crops. Consider drought-resistant varieties.',
+        cropType: 'General',
+        location: _currentLocation,
+      );
+    }
+  }
+
+  // Check wind alerts
+  Future<void> _checkWindAlerts(Weather weather) async {
+    final windSpeed = weather.windSpeed;
+
+    if (windSpeed > 25) {
+      await NotificationService.sendWeatherAlert(
+        title: 'Strong Wind Warning',
+        message:
+            'Wind speed is ${windSpeed.toStringAsFixed(1)} m/s. Avoid spraying operations. Secure farm structures and protect young plants.',
+        severity: 'high',
+        location: _currentLocation,
+        sendSmsIfCritical: true,
+      );
+    } else if (windSpeed > 15) {
+      await NotificationService.sendAgroRecommendation(
+        title: 'Wind Advisory',
+        message:
+            'Windy conditions (${windSpeed.toStringAsFixed(1)} m/s). Delay spraying operations. Good for natural pollination.',
+        cropType: 'General',
+        location: _currentLocation,
+      );
+    }
+  }
+
+  // Check UV Index alerts
+  Future<void> _checkUVIndexAlerts(Weather weather) async {
+    final uvIndex = weather.uvIndex ?? 0;
+
+    if (uvIndex > 8) {
+      await NotificationService.sendWeatherAlert(
+        title: 'Extreme UV Warning',
+        message:
+            'UV Index is $uvIndex (Very High). Avoid outdoor work 10 AM - 4 PM. Use sun protection for workers and livestock.',
+        severity: 'high',
+        location: _currentLocation,
+        sendSmsIfCritical: true,
+      );
+    } else if (uvIndex > 6) {
+      await NotificationService.sendAgroRecommendation(
+        title: 'High UV Advisory',
+        message:
+            'UV Index is $uvIndex (High). Take sun protection measures during midday. Good for crop photosynthesis.',
+        cropType: 'General',
+        location: _currentLocation,
+      );
+    }
+  }
+
+  // Send daily farming tips
+  Future<void> _sendDailyFarmingTips() async {
+    final now = DateTime.now();
+    final hour = now.hour;
+
+    // Send tips at 6 AM
+    if (hour == 6) {
+      final tips = _getDailyFarmingTips();
+      await NotificationService.sendAgroRecommendation(
+        title: 'Daily Farming Tip',
+        message: tips,
+        cropType: 'General',
+        location: _currentLocation,
+      );
+    }
+  }
+
+  // Get daily farming tips
+  String _getDailyFarmingTips() {
+    final tips = [
+      'Early morning (6-8 AM) is the best time for watering plants to minimize evaporation.',
+      'Check soil moisture by inserting your finger 2 inches deep. Water if dry.',
+      'Inspect plants for pests and diseases early in the morning when they are most active.',
+      'Harvest vegetables in the early morning when they are crisp and full of moisture.',
+      'Apply fertilizers in the evening to avoid burning plants in hot weather.',
+      'Mulch around plants to retain soil moisture and suppress weeds.',
+      'Rotate crops annually to prevent soil depletion and pest buildup.',
+      'Keep a farming journal to track planting dates, weather, and yields.',
+    ];
+
+    final random = DateTime.now().day % tips.length;
+    return tips[random];
+  }
+
+  // Check if it's dry season
+  bool _isDrySeason() {
+    final month = DateTime.now().month;
+    // Zimbabwe dry season: April to October
+    return month >= 4 && month <= 10;
   }
 }

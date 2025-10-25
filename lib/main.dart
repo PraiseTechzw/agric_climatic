@@ -21,7 +21,6 @@ import 'screens/soil_data_screen.dart';
 import 'screens/notifications_screen.dart';
 import 'screens/ai_insights_screen.dart';
 import 'screens/help_screen.dart';
-import 'screens/debug_screen.dart';
 import 'providers/weather_provider.dart';
 import 'providers/notification_provider.dart';
 import 'providers/auth_provider.dart';
@@ -155,7 +154,6 @@ class _MainScreenState extends State<MainScreen> {
     const SoilDataScreen(),
     const AIInsightsScreen(),
     const HelpScreen(),
-    if (EnvironmentService.enableDebugMenu) const DebugScreen(),
   ];
 
   @override
@@ -411,8 +409,6 @@ class _MainScreenState extends State<MainScreen> {
           _buildDrawerItem(context, 'Soil Data', Icons.terrain, 6),
           _buildDrawerItem(context, 'AI Insights', Icons.psychology, 7),
           _buildDrawerItem(context, 'Help & Support', Icons.help, 8),
-          if (EnvironmentService.enableDebugMenu)
-            _buildDrawerItem(context, 'Debug Console', Icons.bug_report, 9),
           const Divider(),
           ListTile(
             leading: const Icon(Icons.logout),

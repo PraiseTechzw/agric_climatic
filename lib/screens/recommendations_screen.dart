@@ -13,7 +13,8 @@ class RecommendationsScreen extends StatefulWidget {
 
 class _RecommendationsScreenState extends State<RecommendationsScreen> {
   String _selectedCategory = 'all';
-  final Map<String, Set<int>> _completedActions = {}; // rec_title -> set of action indices
+  final Map<String, Set<int>> _completedActions =
+      {}; // rec_title -> set of action indices
 
   @override
   Widget build(BuildContext context) {
@@ -138,7 +139,7 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
           children: [
             Icon(icon, size: 16),
             const SizedBox(width: 4),
-            Text(label),
+            Flexible(child: Text(label, overflow: TextOverflow.ellipsis)),
           ],
         ),
         selected: isSelected,
@@ -504,14 +505,14 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
   Widget _buildRecommendationCard(WeatherRecommendation recommendation) {
     final completedSet = _completedActions[recommendation.title] ?? {};
     final completionRate = completedSet.length / recommendation.actions.length;
-    
+
     // Get priority color
-    Color priorityColor = recommendation.priority == 'high' 
-        ? Colors.red 
+    Color priorityColor = recommendation.priority == 'high'
+        ? Colors.red
         : recommendation.priority == 'medium'
-            ? Colors.orange
-            : Colors.blue;
-    
+        ? Colors.orange
+        : Colors.blue;
+
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       elevation: 3,
@@ -529,10 +530,7 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              recommendation.color.withOpacity(0.05),
-              Colors.white,
-            ],
+            colors: [recommendation.color.withOpacity(0.05), Colors.white],
           ),
         ),
         child: Column(
@@ -620,9 +618,8 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
                         const SizedBox(height: 4),
                         Text(
                           recommendation.description,
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Colors.grey[700],
-                          ),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: Colors.grey[700]),
                         ),
                       ],
                     ),
@@ -630,11 +627,14 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
                 ],
               ),
             ),
-            
+
             // Progress indicator
             if (completedSet.isNotEmpty)
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -656,17 +656,18 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
                         const SizedBox(width: 8),
                         Text(
                           '${(completionRate * 100).toInt()}%',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: recommendation.color,
-                          ),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: recommendation.color,
+                              ),
                         ),
                       ],
                     ),
                   ],
                 ),
               ),
-            
+
             // Actions list with checkboxes
             Padding(
               padding: const EdgeInsets.all(16),
@@ -675,110 +676,114 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.checklist, 
-                        size: 18, 
-                        color: Colors.grey[700]
-                      ),
+                      Icon(Icons.checklist, size: 18, color: Colors.grey[700]),
                       const SizedBox(width: 6),
-                      Text(
-                        'Action Items (${completedSet.length}/${recommendation.actions.length})',
-                        style: Theme.of(
-                          context,
-                        ).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.grey[800],
+                      Flexible(
+                        child: Text(
+                          'Action Items (${completedSet.length}/${recommendation.actions.length})',
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.grey[800],
+                              ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 12),
-                  ...recommendation.actions.asMap().entries.map(
-                    (entry) {
-                      final index = entry.key;
-                      final action = entry.value;
-                      final isCompleted = completedSet.contains(index);
-                      
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: InkWell(
-                          onTap: () {
-                            setState(() {
-                              if (!_completedActions.containsKey(recommendation.title)) {
-                                _completedActions[recommendation.title] = {};
-                              }
-                              if (isCompleted) {
-                                _completedActions[recommendation.title]!.remove(index);
-                              } else {
-                                _completedActions[recommendation.title]!.add(index);
-                              }
-                            });
-                          },
-                          borderRadius: BorderRadius.circular(8),
-                          child: Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: isCompleted 
-                                  ? recommendation.color.withOpacity(0.08)
-                                  : Colors.grey[50],
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
-                                color: isCompleted
-                                    ? recommendation.color.withOpacity(0.3)
-                                    : Colors.grey[300]!,
-                              ),
-                            ),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Container(
-                                  margin: const EdgeInsets.only(top: 2),
-                                  width: 20,
-                                  height: 20,
-                                  decoration: BoxDecoration(
-                                    color: isCompleted
-                                        ? recommendation.color
-                                        : Colors.white,
-                                    borderRadius: BorderRadius.circular(5),
-                                    border: Border.all(
-                                      color: isCompleted
-                                          ? recommendation.color
-                                          : Colors.grey[400]!,
-                                      width: 2,
-                                    ),
-                                  ),
-                                  child: isCompleted
-                                      ? const Icon(
-                                          Icons.check,
-                                          color: Colors.white,
-                                          size: 14,
-                                        )
-                                      : null,
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Text(
-                                    action,
-                                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                      decoration: isCompleted
-                                          ? TextDecoration.lineThrough
-                                          : null,
-                                      color: isCompleted
-                                          ? Colors.grey[600]
-                                          : Colors.grey[800],
-                                    ),
-                                  ),
-                                ),
-                              ],
+                  ...recommendation.actions.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final action = entry.value;
+                    final isCompleted = completedSet.contains(index);
+
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: InkWell(
+                        onTap: () {
+                          setState(() {
+                            if (!_completedActions.containsKey(
+                              recommendation.title,
+                            )) {
+                              _completedActions[recommendation.title] = {};
+                            }
+                            if (isCompleted) {
+                              _completedActions[recommendation.title]!.remove(
+                                index,
+                              );
+                            } else {
+                              _completedActions[recommendation.title]!.add(
+                                index,
+                              );
+                            }
+                          });
+                        },
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: isCompleted
+                                ? recommendation.color.withOpacity(0.08)
+                                : Colors.grey[50],
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: isCompleted
+                                  ? recommendation.color.withOpacity(0.3)
+                                  : Colors.grey[300]!,
                             ),
                           ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                margin: const EdgeInsets.only(top: 2),
+                                width: 20,
+                                height: 20,
+                                decoration: BoxDecoration(
+                                  color: isCompleted
+                                      ? recommendation.color
+                                      : Colors.white,
+                                  borderRadius: BorderRadius.circular(5),
+                                  border: Border.all(
+                                    color: isCompleted
+                                        ? recommendation.color
+                                        : Colors.grey[400]!,
+                                    width: 2,
+                                  ),
+                                ),
+                                child: isCompleted
+                                    ? const Icon(
+                                        Icons.check,
+                                        color: Colors.white,
+                                        size: 14,
+                                      )
+                                    : null,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  action,
+                                  style: Theme.of(context).textTheme.bodyMedium
+                                      ?.copyWith(
+                                        decoration: isCompleted
+                                            ? TextDecoration.lineThrough
+                                            : null,
+                                        color: isCompleted
+                                            ? Colors.grey[600]
+                                            : Colors.grey[800],
+                                      ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      );
-                    },
-                  ),
+                      ),
+                    );
+                  }),
                 ],
               ),
             ),
-            
+
             // Quick action button
             if (completionRate < 1.0)
               Padding(
@@ -789,15 +794,18 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
                     onPressed: () {
                       // Mark all as complete
                       setState(() {
-                        _completedActions[recommendation.title] = 
-                            Set.from(List.generate(
-                              recommendation.actions.length, 
-                              (index) => index,
-                            ));
+                        _completedActions[recommendation.title] = Set.from(
+                          List.generate(
+                            recommendation.actions.length,
+                            (index) => index,
+                          ),
+                        );
                       });
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text('All actions marked complete for: ${recommendation.title}'),
+                          content: Text(
+                            'All actions marked complete for: ${recommendation.title}',
+                          ),
                           backgroundColor: Colors.green,
                           behavior: SnackBarBehavior.floating,
                         ),
@@ -824,20 +832,26 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
                   decoration: BoxDecoration(
                     color: Colors.green.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: Colors.green.withOpacity(0.3),
-                    ),
+                    border: Border.all(color: Colors.green.withOpacity(0.3)),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.check_circle, color: Colors.green, size: 20),
+                      const Icon(
+                        Icons.check_circle,
+                        color: Colors.green,
+                        size: 20,
+                      ),
                       const SizedBox(width: 8),
-                      Text(
-                        'All actions completed!',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Colors.green,
-                          fontWeight: FontWeight.bold,
+                      Flexible(
+                        child: Text(
+                          'All actions completed!',
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(
+                                color: Colors.green,
+                                fontWeight: FontWeight.bold,
+                              ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
