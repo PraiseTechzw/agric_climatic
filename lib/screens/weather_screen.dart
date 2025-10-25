@@ -1780,7 +1780,7 @@ class _WeatherScreenState extends State<WeatherScreen>
     }
 
     // Feels like difference
-    if ((feelsLike - temp).abs() > 5) {
+    if (feelsLike != null && (feelsLike - temp).abs() > 5) {
       insights.add({
         'icon': Icons.thermostat,
         'color': Colors.orange,

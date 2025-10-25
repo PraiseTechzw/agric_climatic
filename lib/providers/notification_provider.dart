@@ -198,7 +198,7 @@ class NotificationProvider with ChangeNotifier {
     try {
       // SMS functionality would be implemented here
       // For now, just log the action
-      print('SMS would be sent to $phoneNumber: $message');
+      LoggingService.info('SMS would be sent to $phoneNumber: $message');
     } catch (e) {
       _error = 'Failed to send SMS notification: $e';
       notifyListeners();
@@ -293,7 +293,7 @@ class NotificationProvider with ChangeNotifier {
   Future<void> subscribeToTopic(String topic) async {
     try {
       // Topic subscription functionality would be implemented here
-      print('Subscribed to topic: $topic');
+      LoggingService.info('Subscribed to topic: $topic');
     } catch (e) {
       _error = 'Failed to subscribe to topic: $e';
       notifyListeners();
@@ -304,7 +304,7 @@ class NotificationProvider with ChangeNotifier {
   Future<void> unsubscribeFromTopic(String topic) async {
     try {
       // Topic unsubscription functionality would be implemented here
-      print('Unsubscribed from topic: $topic');
+      LoggingService.info('Unsubscribed from topic: $topic');
     } catch (e) {
       _error = 'Failed to unsubscribe from topic: $e';
       notifyListeners();
@@ -367,54 +367,5 @@ class NotificationProvider with ChangeNotifier {
   void _setLoading(bool loading) {
     _isLoading = loading;
     notifyListeners();
-  }
-
-  // Test notification system
-  Future<void> testNotificationSystem() async {
-    try {
-      _setLoading(true);
-      _error = null;
-
-      // Test the notification service
-      await NotificationService.testNotificationSystem();
-
-      // Add test notifications to the list
-      final testNotifications = [
-        AppNotification(
-          id: 'test_1',
-          title: 'Test System Notification',
-          body: 'This is a test system notification.',
-          type: 'system',
-          timestamp: DateTime.now(),
-          priority: 'normal',
-        ),
-        AppNotification(
-          id: 'test_2',
-          title: 'Test Weather Alert',
-          body: 'This is a test weather alert.',
-          type: 'weather_alert',
-          timestamp: DateTime.now(),
-          priority: 'high',
-        ),
-        AppNotification(
-          id: 'test_3',
-          title: 'Test Recommendation',
-          body: 'This is a test agricultural recommendation.',
-          type: 'recommendation',
-          timestamp: DateTime.now(),
-          priority: 'normal',
-        ),
-      ];
-
-      _notifications.insertAll(0, testNotifications);
-      notifyListeners();
-
-      LoggingService.info('Notification system test completed');
-    } catch (e) {
-      _error = 'Failed to test notification system: $e';
-      notifyListeners();
-    } finally {
-      _setLoading(false);
-    }
   }
 }

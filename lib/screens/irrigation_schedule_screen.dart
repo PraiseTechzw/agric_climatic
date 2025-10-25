@@ -5,6 +5,7 @@ import '../providers/notification_provider.dart';
 import '../models/soil_data.dart';
 import '../services/soil_data_service.dart';
 import '../services/agro_prediction_service.dart';
+import '../services/logging_service.dart';
 
 class IrrigationScheduleScreen extends StatefulWidget {
   const IrrigationScheduleScreen({super.key});
@@ -78,7 +79,10 @@ class _IrrigationScheduleScreenState extends State<IrrigationScheduleScreen> {
         _isLoading = false;
       });
     } catch (e) {
-      print('Error loading soil data and irrigation schedules: $e');
+      LoggingService.error(
+        'Error loading soil data and irrigation schedules',
+        error: e,
+      );
       setState(() {
         _isLoading = false;
       });
@@ -116,7 +120,7 @@ class _IrrigationScheduleScreenState extends State<IrrigationScheduleScreen> {
         priority: 'high',
       );
     } catch (e) {
-      print('Error sending irrigation notification: $e');
+      LoggingService.error('Error sending irrigation notification', error: e);
     }
   }
 
@@ -1068,7 +1072,7 @@ class _IrrigationScheduleScreenState extends State<IrrigationScheduleScreen> {
 
       return schedules;
     } catch (e) {
-      print('Error getting irrigation schedules: $e');
+      LoggingService.error('Error getting irrigation schedules', error: e);
       return [];
     }
   }

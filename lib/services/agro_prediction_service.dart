@@ -6,6 +6,7 @@ import '../models/weather_alert.dart';
 import '../models/soil_data.dart';
 import '../services/notification_service.dart';
 import '../services/firebase_ai_service.dart';
+import 'logging_service.dart';
 
 class AgroPredictionService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -381,7 +382,10 @@ class AgroPredictionService {
         }
       }
     } catch (e) {
-      print('AI crop recommendation failed, using fallback: $e');
+      LoggingService.warning(
+        'AI crop recommendation failed, using fallback',
+        error: e,
+      );
     }
 
     // Fallback to traditional scoring method
@@ -478,7 +482,10 @@ class AgroPredictionService {
 
       return 'low';
     } catch (e) {
-      print('AI pest risk assessment failed, using fallback: $e');
+      LoggingService.warning(
+        'AI pest risk assessment failed, using fallback',
+        error: e,
+      );
 
       // Fallback to traditional assessment
       final temp = prediction['temperature'] ?? 0.0;
@@ -525,7 +532,10 @@ class AgroPredictionService {
 
       return 'low';
     } catch (e) {
-      print('AI disease risk assessment failed, using fallback: $e');
+      LoggingService.warning(
+        'AI disease risk assessment failed, using fallback',
+        error: e,
+      );
 
       // Fallback to traditional assessment
       final humidity = prediction['humidity'] ?? 0.0;
@@ -1009,7 +1019,7 @@ class AgroPredictionService {
         'growth_stage': growthStage,
       };
     } catch (e) {
-      print('Error getting AI insights: $e');
+      LoggingService.error('Error getting AI insights', error: e);
       return {
         'error': 'Failed to get AI insights: $e',
         'timestamp': DateTime.now().toIso8601String(),
@@ -1043,7 +1053,7 @@ class AgroPredictionService {
         'data_points': historicalData.length,
       };
     } catch (e) {
-      print('Error getting AI weather analysis: $e');
+      LoggingService.error('Error getting AI weather analysis', error: e);
       return {
         'error': 'Failed to get AI weather analysis: $e',
         'timestamp': DateTime.now().toIso8601String(),

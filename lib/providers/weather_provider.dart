@@ -8,6 +8,7 @@ import '../services/notification_service.dart';
 import '../services/zimbabwe_api_service.dart';
 import '../services/firebase_service.dart';
 import '../services/location_service.dart';
+import '../services/logging_service.dart';
 import '../widgets/location_permission_handler.dart';
 import '../services/offline_storage_service.dart';
 
@@ -112,7 +113,7 @@ class WeatherProvider extends ChangeNotifier {
         notifyListeners();
       }
     } catch (e) {
-      print('Failed to load cached data: $e');
+      LoggingService.error('Failed to load cached data', error: e);
     }
   }
 

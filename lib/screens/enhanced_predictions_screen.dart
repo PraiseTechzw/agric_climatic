@@ -822,7 +822,13 @@ class _EnhancedPredictionsScreenState extends State<EnhancedPredictionsScreen>
       children: [
         Icon(icon, size: 16, color: color),
         const SizedBox(width: 4),
-        Text('$label: $value', style: Theme.of(context).textTheme.bodySmall),
+        Flexible(
+          child: Text(
+            '$label: $value',
+            style: Theme.of(context).textTheme.bodySmall,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
       ],
     );
   }
