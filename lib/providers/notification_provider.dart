@@ -28,6 +28,8 @@ class NotificationProvider with ChangeNotifier {
 
     try {
       await NotificationService.initialize();
+      // Ensure recurring notifications are scheduled, including 6-hour updates
+      await NotificationService.scheduleRecurringNotifications();
       await loadNotifications();
       _isInitialized = true;
       notifyListeners();

@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:flutter/material.dart';
 import '../widgets/debug_console_widget.dart';
 import '../services/environment_service.dart';
@@ -7,6 +8,9 @@ import '../services/firebase_ai_service.dart';
 import '../services/zimbabwe_api_service.dart';
 import '../services/network_service.dart';
 import '../services/auth_test_service.dart';
+import '../services/notification_service.dart';
+import '../services/vonage_sms_service.dart';
+import '../services/user_profile_service.dart';
 import '../providers/auth_provider.dart';
 import 'package:provider/provider.dart';
 
@@ -234,9 +238,9 @@ class _DebugScreenState extends State<DebugScreen> {
                     const SizedBox(width: 8),
                     Text(
                       'Authentication Status',
-                      style: Theme.of(
-                        context,
-                      ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const Spacer(),
                     ElevatedButton(
@@ -246,13 +250,22 @@ class _DebugScreenState extends State<DebugScreen> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                _buildAuthStatusRow('Authenticated', authProvider.isAuthenticated),
+                _buildAuthStatusRow(
+                  'Authenticated',
+                  authProvider.isAuthenticated,
+                ),
                 _buildAuthStatusRow('Anonymous', authProvider.isAnonymous),
                 _buildAuthStatusRow('Loading', authProvider.isLoading),
                 if (authProvider.user != null) ...[
                   _buildAuthStatusRow('User ID', authProvider.user!.uid),
-                  _buildAuthStatusRow('Email', authProvider.user!.email ?? 'N/A'),
-                  _buildAuthStatusRow('Email Verified', authProvider.user!.emailVerified),
+                  _buildAuthStatusRow(
+                    'Email',
+                    authProvider.user!.email ?? 'N/A',
+                  ),
+                  _buildAuthStatusRow(
+                    'Email Verified',
+                    authProvider.user!.emailVerified,
+                  ),
                 ],
                 if (authProvider.errorMessage != null) ...[
                   const SizedBox(height: 8),
@@ -309,7 +322,9 @@ class _DebugScreenState extends State<DebugScreen> {
 
   Color _getAuthValueColor(dynamic value) {
     if (value is bool) {
-      return value ? Colors.green.withOpacity(0.2) : Colors.red.withOpacity(0.2);
+      return value
+          ? Colors.green.withOpacity(0.2)
+          : Colors.red.withOpacity(0.2);
     }
     return Colors.blue.withOpacity(0.2);
   }
@@ -325,7 +340,7 @@ class _DebugScreenState extends State<DebugScreen> {
     try {
       LoggingService.info('Starting authentication test...', tag: 'DEBUG');
       final result = await AuthTestService.testAuthentication();
-      
+
       if (result) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -516,6 +531,21 @@ class _DebugScreenState extends State<DebugScreen> {
                   'Test AI Service',
                   Icons.psychology,
                   () => _testSpecificApi('ai'),
+                ),
+                _buildQuickActionButton(
+                  'Test SMS Service',
+                  Icons.sms,
+                  () => _testSpecificApi('sms'),
+                ),
+                _buildQuickActionButton(
+                  'Send Test SMS',
+                  Icons.send,
+                  () => _sendTestSMS(),
+                ),
+                _buildQuickActionButton(
+                  'Add Phone Number',
+                  Icons.phone,
+                  () => _addUserPhoneNumber(),
                 ),
                 _buildQuickActionButton(
                   'Clear Logs',
@@ -741,6 +771,175 @@ class _DebugScreenState extends State<DebugScreen> {
     }
   }
 
+  Future<void> _testSMSService() async {
+    final stopwatch = Stopwatch()..start();
+
+    try {
+      // Test SMS service status
+      final smsStatus = NotificationService.getSMSServiceStatus();
+      final smsCapability = await NotificationService.canSendSMS();
+      final phoneStatus = await NotificationService.getUserPhoneStatus();
+
+      // Test Vonage SMS if initialized
+      if (VonageSMSService.isInitialized) {
+        await NotificationService.testVonageSMS();
+      }
+
+      stopwatch.stop();
+
+      setState(() {
+        _apiTestResults['sms'] = {
+          'status': 'success',
+          'response_time_ms': stopwatch.elapsedMilliseconds,
+          'vonage_initialized': smsStatus['vonage_initialized'],
+          'vonage_status': smsStatus['vonage_status'],
+          'can_send_sms': smsCapability['can_send'],
+          'has_phone_number': smsCapability['has_phone_number'],
+          'user_phone_configured': smsCapability['has_phone_number'],
+          'user_authenticated': phoneStatus['authenticated'],
+          'phone_status_message': phoneStatus['message'],
+          'action_required': phoneStatus['action_required'],
+          'timestamp': DateTime.now().toIso8601String(),
+        };
+      });
+
+      LoggingService.info('SMS service test successful', tag: 'DEBUG');
+    } catch (e) {
+      stopwatch.stop();
+
+      setState(() {
+        _apiTestResults['sms'] = {
+          'status': 'error',
+          'response_time_ms': stopwatch.elapsedMilliseconds,
+          'error': e.toString(),
+          'timestamp': DateTime.now().toIso8601String(),
+        };
+      });
+
+      LoggingService.error('SMS service test failed', tag: 'DEBUG', error: e);
+    }
+  }
+
+  Future<void> _sendTestSMS() async {
+    try {
+      // Show phone number input dialog
+      final phoneNumber = await _showPhoneNumberDialog();
+      if (phoneNumber == null || phoneNumber.isEmpty) {
+        return;
+      }
+
+      // Send test SMS using the provided phone number
+      await NotificationService.sendWeatherAlert(
+        title: 'Test Weather Alert',
+        message:
+            'This is a test SMS from AgriClimatic app. If you receive this, SMS notifications are working correctly!',
+        severity: 'high',
+        location: 'Test Location',
+        sendSmsIfCritical: true,
+      );
+
+      // Also test direct SMS sending
+      await _sendDirectTestSMS(phoneNumber);
+
+      // Show success message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Test SMS sent! Check your phone.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+
+      LoggingService.info('Test SMS sent successfully', tag: 'DEBUG');
+    } catch (e) {
+      LoggingService.error('Failed to send test SMS', tag: 'DEBUG', error: e);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to send test SMS: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<String?> _showPhoneNumberDialog() async {
+    final controller = TextEditingController();
+
+    return showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Send Test SMS'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Enter phone number to send test SMS:'),
+            const SizedBox(height: 16),
+            TextField(
+              controller: controller,
+              decoration: const InputDecoration(
+                labelText: 'Phone Number',
+                hintText: 'e.g., 263786223289',
+                border: OutlineInputBorder(),
+              ),
+              keyboardType: TextInputType.phone,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, controller.text),
+            child: const Text('Send'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _sendDirectTestSMS(String phoneNumber) async {
+    try {
+      LoggingService.info('Sending direct test SMS', tag: 'DEBUG');
+
+      // Test direct Vonage SMS
+      if (VonageSMSService.isInitialized) {
+        final response = await VonageSMSService.sendSMS(
+          to: phoneNumber,
+          text:
+              'Direct test SMS from AgriClimatic - ${DateTime.now().toIso8601String()}',
+          clientRef: 'direct_test_${DateTime.now().millisecondsSinceEpoch}',
+        );
+
+        if (response.isSuccess) {
+          LoggingService.info(
+            'Direct SMS sent successfully',
+            tag: 'DEBUG',
+            extra: {
+              'message_id': response.firstMessageId,
+              'status': response.firstStatus,
+            },
+          );
+        } else {
+          LoggingService.warning(
+            'Direct SMS failed',
+            tag: 'DEBUG',
+            extra: {'status': response.firstStatus},
+          );
+        }
+      } else {
+        LoggingService.warning('Vonage SMS not initialized', tag: 'DEBUG');
+      }
+    } catch (e) {
+      LoggingService.error('Direct SMS test failed', tag: 'DEBUG', error: e);
+    }
+  }
+
   Future<void> _testSpecificApi(String apiName) async {
     switch (apiName.toLowerCase()) {
       case 'network':
@@ -754,6 +953,9 @@ class _DebugScreenState extends State<DebugScreen> {
         break;
       case 'ai':
         await _testAiService();
+        break;
+      case 'sms':
+        await _testSMSService();
         break;
     }
   }
@@ -866,5 +1068,74 @@ class _DebugScreenState extends State<DebugScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _addUserPhoneNumber() async {
+    try {
+      // Check if user is authenticated
+      final auth = firebase_auth.FirebaseAuth.instance;
+      final currentUser = auth.currentUser;
+
+      if (currentUser == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please sign in first to add your phone number'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+
+      // Show phone number input dialog
+      final phoneNumber = await _showPhoneNumberDialog();
+      if (phoneNumber == null || phoneNumber.isEmpty) {
+        return;
+      }
+
+      // Format phone number for Zimbabwe
+      String formattedPhone = phoneNumber.trim();
+      if (!formattedPhone.startsWith('+263')) {
+        if (formattedPhone.startsWith('263')) {
+          formattedPhone = '+$formattedPhone';
+        } else if (formattedPhone.startsWith('0')) {
+          formattedPhone = '+263${formattedPhone.substring(1)}';
+        } else {
+          formattedPhone = '+263$formattedPhone';
+        }
+      }
+
+      // Save phone number to user profile
+      await UserProfileService.savePhoneNumber(formattedPhone);
+
+      // Show success message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Phone number saved: $formattedPhone'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+
+      LoggingService.info(
+        'Phone number added to user profile',
+        extra: {'phone': formattedPhone, 'user_id': currentUser.uid},
+      );
+    } catch (e) {
+      LoggingService.error(
+        'Failed to add phone number',
+        tag: 'DEBUG',
+        error: e,
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to save phone number: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 }

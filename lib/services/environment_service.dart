@@ -43,6 +43,11 @@ class EnvironmentService {
       '85befe227d13e797d3ff6c94c9ccb9ab-12c23030-be82-438a-b483-ffaac5709d27';
   static const String _infobipFrom = '447491163443';
 
+  // Vonage SMS configuration
+  static const String _vonageApiKey = '5ed1470d';
+  static const String _vonageApiSecret = 'XoqTr3O2cuL0vk0l';
+  static const String _vonageFrom = 'Vonage APIs';
+
   // Logging configuration
   static const bool _enableDetailedLogging = kDebugMode;
   static const bool _enablePerformanceLogging = kDebugMode;
@@ -83,6 +88,11 @@ class EnvironmentService {
   static String get infobipBaseUrl => _infobipBaseUrl;
   static String get infobipApiKey => _infobipApiKey;
   static String get infobipFrom => _infobipFrom;
+
+  // Vonage SMS getters
+  static String get vonageApiKey => _vonageApiKey;
+  static String get vonageApiSecret => _vonageApiSecret;
+  static String get vonageFrom => _vonageFrom;
 
   // App Configuration
   static String get appName => _appName;

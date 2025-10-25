@@ -1,14 +1,14 @@
 import 'dart:io' show Platform;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:timezone/timezone.dart' as tz;
-import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'package:timezone/data/latest.dart' as tzData;
 import 'logging_service.dart';
 import 'user_profile_service.dart';
 import 'environment_service.dart';
+import 'vonage_sms_service.dart';
 
 class NotificationService {
   static final FlutterLocalNotificationsPlugin _localNotifications =
@@ -28,6 +28,12 @@ class NotificationService {
     if (_isInitialized) return;
 
     try {
+      // Initialize timezone database and set local location
+      try {
+        tzData.initializeTimeZones();
+        tz.setLocalLocation(tz.getLocation('Africa/Harare'));
+      } catch (_) {}
+
       // Initialize local notifications
       await _initializeLocalNotifications();
 
@@ -37,7 +43,8 @@ class NotificationService {
       // Request permissions
       await _requestPermissions();
 
-      // Infobip requires no init beyond having API key and base URL
+      // Initialize Vonage SMS service
+      await _initializeVonageSMS();
 
       _isInitialized = true;
       LoggingService.info('Notification service initialized');
@@ -140,6 +147,33 @@ class NotificationService {
         await androidPlugin.createNotificationChannel(agroChannel);
         await androidPlugin.createNotificationChannel(systemChannel);
       }
+    }
+  }
+
+  static Future<void> _initializeVonageSMS() async {
+    try {
+      LoggingService.info(
+        'Initializing Vonage SMS with credentials',
+        extra: {
+          'api_key': EnvironmentService.vonageApiKey,
+          'api_secret': EnvironmentService.vonageApiSecret,
+          'from_number': EnvironmentService.vonageFrom,
+          'api_key_length': EnvironmentService.vonageApiKey.length,
+          'api_secret_length': EnvironmentService.vonageApiSecret.length,
+        },
+      );
+
+      await VonageSMSService.initialize(
+        apiKey: EnvironmentService.vonageApiKey,
+        apiSecret: EnvironmentService.vonageApiSecret,
+        fromNumber: EnvironmentService.vonageFrom,
+      );
+      LoggingService.info('Vonage SMS service initialized successfully');
+    } catch (e) {
+      LoggingService.warning(
+        'Failed to initialize Vonage SMS service',
+        extra: {'error': e.toString()},
+      );
     }
   }
 
@@ -370,113 +404,97 @@ class NotificationService {
     );
   }
 
-  // Send SMS using Infobip
+  // Send SMS using Vonage or Infobip (with fallback)
   static Future<void> _sendSMS({
     required String message,
     String? phoneNumber,
+    String? clientRef,
   }) async {
     try {
       LoggingService.info('Preparing SMS send');
       // Use saved user phone if not provided
       final recipientNumber = phoneNumber ?? await _getDefaultUserPhone();
       if (recipientNumber == null || recipientNumber.isEmpty) {
-        LoggingService.warning('No recipient phone available, skipping SMS');
-        return;
-      }
-      LoggingService.info(
-        'Resolved recipient number',
-        extra: {'to': recipientNumber},
-      );
-
-      // Send via Infobip
-      final baseUrl = EnvironmentService.infobipBaseUrl;
-      final apiKey = EnvironmentService.infobipApiKey;
-      final from = EnvironmentService.infobipFrom;
-      if (baseUrl.isEmpty || apiKey.isEmpty) {
         LoggingService.warning(
-          'Infobip not configured, skipping SMS',
+          'No recipient phone available, skipping SMS',
           extra: {
-            'baseUrlEmpty': baseUrl.isEmpty,
-            'apiKeyEmpty': apiKey.isEmpty,
+            'reason': 'No phone number found in user profile or provided',
+            'user_authenticated': phoneNumber != null,
           },
         );
         return;
       }
-
-      final url = Uri.parse('$baseUrl/sms/2/text/advanced');
-      final body = {
-        'messages': [
-          {
-            'destinations': [
-              {'to': recipientNumber},
-            ],
-            'from': from.isNotEmpty ? from : 'ServiceSMS',
-            'text': message,
-          },
-        ],
-      };
-
-      // Debug log (without sensitive apiKey)
       LoggingService.info(
-        'Sending Infobip SMS...',
+        'Resolved recipient number from user profile',
         extra: {
-          'url': url.toString(),
           'to': recipientNumber,
-          'from': from.isEmpty ? '(default)' : from,
-          'message_len': message.length,
+          'source': phoneNumber != null ? 'provided' : 'user_profile',
         },
       );
 
-      final resp = await http.post(
-        url,
-        headers: {
-          'Authorization': 'App $apiKey',
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: jsonEncode(body),
-      );
+      // Send SMS via Vonage only
+      if (VonageSMSService.isInitialized) {
+        try {
+          LoggingService.info('Attempting SMS send via Vonage...');
+          final response = await VonageSMSService.sendSMS(
+            to: recipientNumber,
+            text: message,
+            clientRef: clientRef,
+          );
 
-      if (resp.statusCode >= 200 && resp.statusCode < 300) {
-        LoggingService.info(
-          'SMS sent successfully via Infobip',
-          extra: {
-            'status': resp.statusCode,
-            // Infobip returns JSON body with messageId(s); include for tracing
-            'response': resp.body,
-          },
-        );
+          if (response.isSuccess) {
+            LoggingService.info(
+              'SMS sent successfully via Vonage',
+              extra: {
+                'message_id': response.firstMessageId,
+                'status': response.firstStatus,
+              },
+            );
+          } else {
+            LoggingService.error(
+              'Vonage SMS failed: ${response.firstStatus}',
+              extra: {'status': response.firstStatus},
+            );
+            throw Exception('Vonage SMS failed: ${response.firstStatus}');
+          }
+        } catch (e) {
+          LoggingService.error('Vonage SMS error: ${e.toString()}');
+          rethrow;
+        }
       } else {
-        LoggingService.error(
-          'Infobip SMS send failed',
-          extra: {'status': resp.statusCode, 'body': resp.body},
-        );
+        LoggingService.error('Vonage SMS service not initialized');
+        throw Exception('Vonage SMS service not initialized');
       }
     } catch (e) {
-      LoggingService.error('Failed to send SMS via Infobip', error: e);
-
-      // Fallback to SMS app if Infobip fails
-      try {
-        final uri = Uri(scheme: 'sms', queryParameters: {'body': message});
-        if (await canLaunchUrl(uri)) {
-          await launchUrl(uri);
-          LoggingService.info('SMS launched via SMS app as fallback');
-        }
-      } catch (fallbackError) {
-        LoggingService.error('SMS fallback also failed', error: fallbackError);
-      }
+      LoggingService.error('Failed to send SMS', error: e);
     }
   }
 
   static Future<String?> _getDefaultUserPhone() async {
     try {
+      // First check if user is authenticated
+      final auth = FirebaseAuth.instance;
+      final currentUser = auth.currentUser;
+
+      if (currentUser == null) {
+        LoggingService.warning(
+          'No authenticated user found - cannot retrieve phone number',
+        );
+        return null;
+      }
+
+      LoggingService.info(
+        'Retrieving phone number for authenticated user',
+        extra: {'user_id': currentUser.uid, 'email': currentUser.email},
+      );
+
       final profile = await UserProfileService.getCurrentUserProfile();
       String? phone = profile?['phone_e164'] as String?;
 
       // Ensure phone number has +263 prefix for Zimbabwe
       if (phone != null && phone.isNotEmpty) {
         // Remove any spaces and format properly
-        phone = phone.replaceAll(' ', '');
+        phone = phone.replaceAll(' ', '').trim();
 
         // If it doesn't start with +263, add it
         if (!phone.startsWith('+263')) {
@@ -490,10 +508,37 @@ class NotificationService {
             phone = '+263$phone';
           }
         }
-      }
 
-      return phone;
-    } catch (_) {
+        // Validate the final phone number format
+        if (phone.length >= 12 && phone.startsWith('+263')) {
+          LoggingService.info(
+            'Retrieved user phone number from profile',
+            extra: {'phone': phone, 'user_id': currentUser.uid},
+          );
+          return phone;
+        } else {
+          LoggingService.warning(
+            'Invalid phone number format in user profile',
+            extra: {'phone': phone, 'user_id': currentUser.uid},
+          );
+          return null;
+        }
+      } else {
+        LoggingService.warning(
+          'No phone number found in user profile',
+          extra: {
+            'user_id': currentUser.uid,
+            'profile_exists': profile != null,
+            'profile_keys': profile?.keys.toList(),
+          },
+        );
+        return null;
+      }
+    } catch (e) {
+      LoggingService.error(
+        'Failed to retrieve user phone number from profile',
+        error: e,
+      );
       return null;
     }
   }
@@ -596,6 +641,9 @@ class NotificationService {
   // Schedule recurring notifications
   static Future<void> scheduleRecurringNotifications() async {
     try {
+      // Schedule six-hourly system updates
+      await _scheduleSixHourlyUpdates();
+
       // Schedule daily weather and recommendations at 06:30
       await _scheduleDailyWeatherAndRecommendations();
 
@@ -610,6 +658,40 @@ class NotificationService {
       LoggingService.error(
         'Failed to schedule recurring notifications',
         error: e,
+      );
+    }
+  }
+
+  // Schedule notifications every 6 hours (00:00, 06:00, 12:00, 18:00)
+  static Future<void> _scheduleSixHourlyUpdates() async {
+    // Use distinct IDs to avoid clashing with other schedules
+    const ids = [10, 11, 12, 13];
+    const times = [
+      [0, 0],
+      [6, 0],
+      [12, 0],
+      [18, 0],
+    ];
+
+    for (var i = 0; i < times.length; i++) {
+      final hour = times[i][0];
+      final minute = times[i][1];
+      await _localNotifications.zonedSchedule(
+        ids[i],
+        '6-hour Update',
+        'Regular update every 6 hours.',
+        _nextInstanceOfTime(hour, minute),
+        const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'six_hour_updates',
+            '6-hour Updates',
+            channelDescription: 'Repeating updates every 6 hours',
+            importance: Importance.high,
+            priority: Priority.high,
+          ),
+        ),
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        matchDateTimeComponents: DateTimeComponents.time,
       );
     }
   }
@@ -882,6 +964,126 @@ class NotificationService {
       LoggingService.info('Notification system test completed successfully');
     } catch (e) {
       LoggingService.error('Notification system test failed', error: e);
+    }
+  }
+
+  // Test Vonage SMS integration
+  static Future<void> testVonageSMS({String? testPhoneNumber}) async {
+    try {
+      LoggingService.info('Testing Vonage SMS integration...');
+
+      if (!VonageSMSService.isInitialized) {
+        LoggingService.warning('Vonage SMS service not initialized');
+        return;
+      }
+
+      final phoneNumber = testPhoneNumber ?? await _getDefaultUserPhone();
+      if (phoneNumber == null || phoneNumber.isEmpty) {
+        LoggingService.warning('No test phone number available');
+        return;
+      }
+
+      final testMessage =
+          'AgriClimatic Test SMS - ${DateTime.now().toIso8601String()}';
+
+      final response = await VonageSMSService.sendSMS(
+        to: phoneNumber,
+        text: testMessage,
+        clientRef: 'test_${DateTime.now().millisecondsSinceEpoch}',
+      );
+
+      if (response.isSuccess) {
+        LoggingService.info(
+          'Vonage SMS test successful',
+          extra: {
+            'message_id': response.firstMessageId,
+            'status': response.firstStatus,
+            'to': phoneNumber,
+          },
+        );
+      } else {
+        LoggingService.error(
+          'Vonage SMS test failed',
+          extra: {'status': response.firstStatus, 'to': phoneNumber},
+        );
+      }
+    } catch (e) {
+      LoggingService.error('Vonage SMS test failed', error: e);
+    }
+  }
+
+  // Get SMS service status
+  static Map<String, dynamic> getSMSServiceStatus() {
+    return {
+      'vonage_initialized': VonageSMSService.isInitialized,
+      'vonage_status': VonageSMSService.getServiceStatus(),
+    };
+  }
+
+  /// Check if SMS can be sent (user has phone number and service is configured)
+  static Future<Map<String, dynamic>> canSendSMS() async {
+    try {
+      final hasPhone = await UserProfileService.hasValidPhoneNumber();
+      final vonageReady = VonageSMSService.isInitialized;
+
+      return {
+        'can_send': hasPhone && vonageReady,
+        'has_phone_number': hasPhone,
+        'vonage_ready': vonageReady,
+        'services_configured': vonageReady,
+      };
+    } catch (e) {
+      return {
+        'can_send': false,
+        'has_phone_number': false,
+        'vonage_ready': false,
+        'services_configured': false,
+        'error': e.toString(),
+      };
+    }
+  }
+
+  /// Get user phone number status and provide guidance
+  static Future<Map<String, dynamic>> getUserPhoneStatus() async {
+    try {
+      final auth = FirebaseAuth.instance;
+      final currentUser = auth.currentUser;
+
+      if (currentUser == null) {
+        return {
+          'authenticated': false,
+          'has_phone': false,
+          'message': 'User not authenticated',
+          'action_required': 'Please sign in to enable SMS notifications',
+        };
+      }
+
+      final profile = await UserProfileService.getCurrentUserProfile();
+      final phone = profile?['phone_e164'] as String?;
+      final hasValidPhone =
+          phone != null && phone.isNotEmpty && phone.startsWith('+263');
+
+      return {
+        'authenticated': true,
+        'has_phone': hasValidPhone,
+        'phone_number': hasValidPhone ? phone : null,
+        'profile_exists': profile != null,
+        'message': hasValidPhone
+            ? 'Phone number configured for SMS notifications'
+            : 'No phone number found in profile',
+        'action_required': hasValidPhone
+            ? null
+            : 'Please add your phone number in the app settings to enable SMS notifications',
+      };
+    } catch (e) {
+      return {
+        'authenticated': false,
+        'has_phone': false,
+        'error': e.toString(),
+        'message': 'Failed to check phone status',
+        'action_required':
+            'Please check your internet connection and try again',
+      };
     }
   }
 }

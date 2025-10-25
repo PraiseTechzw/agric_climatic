@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/weather_provider.dart';
+import '../providers/notification_provider.dart';
 import '../models/soil_data.dart';
 import '../services/soil_data_service.dart';
 import '../services/agro_prediction_service.dart';
@@ -42,6 +43,7 @@ class _IrrigationScheduleScreenState extends State<IrrigationScheduleScreen> {
   void initState() {
     super.initState();
     _loadSoilData();
+    _sendInitialNotification();
   }
 
   Future<void> _loadSoilData() async {
@@ -90,6 +92,86 @@ class _IrrigationScheduleScreenState extends State<IrrigationScheduleScreen> {
         );
       }
     }
+  }
+
+  // Send automatic notification when crop and stage are selected
+  Future<void> _sendInitialNotification() async {
+    await Future.delayed(
+      const Duration(seconds: 2),
+    ); // Small delay to ensure providers are ready
+    await _sendIrrigationNotification();
+  }
+
+  // Send notification when crop or stage changes
+  Future<void> _sendIrrigationNotification() async {
+    try {
+      final notificationProvider = context.read<NotificationProvider>();
+
+      final recommendation = _getIrrigationRecommendation();
+
+      await notificationProvider.sendLocalNotification(
+        title: 'Irrigation Recommendation for $_selectedCrop',
+        body: recommendation,
+        type: 'irrigation',
+        priority: 'high',
+      );
+    } catch (e) {
+      print('Error sending irrigation notification: $e');
+    }
+  }
+
+  // Get irrigation recommendation based on selected crop and stage
+  String _getIrrigationRecommendation() {
+    final recommendations = {
+      'Maize': {
+        'Planting':
+            'Water lightly every 2-3 days. Keep soil moist but not waterlogged.',
+        'Vegetative':
+            'Water deeply every 3-4 days. Ensure 1-2 inches of water per week.',
+        'Flowering':
+            'Increase watering to every 2-3 days. Critical stage for yield.',
+        'Fruiting': 'Maintain consistent moisture. Water every 2-3 days.',
+        'Maturity':
+            'Reduce watering frequency. Allow soil to dry slightly between waterings.',
+      },
+      'Wheat': {
+        'Planting':
+            'Light watering to establish roots. Keep soil consistently moist.',
+        'Vegetative':
+            'Water every 4-5 days. Ensure adequate moisture for growth.',
+        'Flowering': 'Critical watering period. Water every 2-3 days.',
+        'Fruiting': 'Maintain soil moisture. Water every 3-4 days.',
+        'Maturity':
+            'Reduce watering as grain matures. Stop 2 weeks before harvest.',
+      },
+      'Sorghum': {
+        'Planting': 'Light, frequent watering to establish seedlings.',
+        'Vegetative': 'Water every 4-5 days. Sorghum is drought tolerant.',
+        'Flowering': 'Increase watering frequency to every 3-4 days.',
+        'Fruiting': 'Maintain consistent moisture for grain development.',
+        'Maturity': 'Reduce watering. Allow natural drying for harvest.',
+      },
+      'Cotton': {
+        'Planting':
+            'Keep soil moist for germination. Light watering every 2-3 days.',
+        'Vegetative': 'Water every 3-4 days. Cotton needs consistent moisture.',
+        'Flowering':
+            'Critical stage. Water every 2-3 days for good boll development.',
+        'Fruiting': 'Maintain moisture for boll filling. Water every 2-3 days.',
+        'Maturity': 'Reduce watering to promote boll opening.',
+      },
+      'Tobacco': {
+        'Planting': 'Light, frequent watering for seedling establishment.',
+        'Vegetative':
+            'Water every 3-4 days. Tobacco needs consistent moisture.',
+        'Flowering': 'Reduce watering slightly to control growth.',
+        'Fruiting': 'Maintain moderate moisture. Avoid overwatering.',
+        'Maturity': 'Reduce watering for proper curing preparation.',
+      },
+    };
+
+    return recommendations[_selectedCrop]?[_selectedGrowthStage] ??
+        'Water your $_selectedCrop plants appropriately for the $_selectedGrowthStage stage.';
   }
 
   @override
@@ -244,32 +326,82 @@ class _IrrigationScheduleScreenState extends State<IrrigationScheduleScreen> {
   }
 
   Widget _buildFilterChip(String label, String value) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+    return GestureDetector(
+      onTap: () => _showSelectionDialog(label),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '$label: ',
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+            ),
+            Text(
+              value,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.primary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Icon(
+              Icons.arrow_drop_down,
+              size: 16,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+          ],
         ),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            '$label: ',
-            style: Theme.of(
-              context,
-            ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
-          ),
-          Text(
-            value,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(context).colorScheme.primary,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
+    );
+  }
+
+  void _showSelectionDialog(String label) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Select $label'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: label == 'Crop'
+              ? _crops
+                    .map(
+                      (crop) => ListTile(
+                        title: Text(crop),
+                        onTap: () {
+                          Navigator.pop(context);
+                          setState(() {
+                            _selectedCrop = crop;
+                          });
+                          _sendIrrigationNotification();
+                        },
+                      ),
+                    )
+                    .toList()
+              : _growthStages
+                    .map(
+                      (stage) => ListTile(
+                        title: Text(stage),
+                        onTap: () {
+                          Navigator.pop(context);
+                          setState(() {
+                            _selectedGrowthStage = stage;
+                          });
+                          _sendIrrigationNotification();
+                        },
+                      ),
+                    )
+                    .toList(),
+        ),
       ),
     );
   }
@@ -382,6 +514,8 @@ class _IrrigationScheduleScreenState extends State<IrrigationScheduleScreen> {
   }
 
   Widget _buildIrrigationRecommendations() {
+    final recommendation = _getIrrigationRecommendation();
+
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -395,12 +529,19 @@ class _IrrigationScheduleScreenState extends State<IrrigationScheduleScreen> {
                 Icon(Icons.lightbulb, color: Colors.orange[600], size: 24),
                 const SizedBox(width: 12),
                 Text(
-                  'Today\'s Recommendation',
+                  'Irrigation Recommendation',
                   style: Theme.of(
                     context,
                   ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                 ),
               ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'For $_selectedCrop in $_selectedGrowthStage stage',
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
             ),
             const SizedBox(height: 16),
             Container(
@@ -418,7 +559,7 @@ class _IrrigationScheduleScreenState extends State<IrrigationScheduleScreen> {
                       Icon(Icons.check_circle, color: Colors.green, size: 20),
                       const SizedBox(width: 8),
                       Text(
-                        'Irrigation Recommended',
+                        'Recommended Action',
                         style: Theme.of(context).textTheme.titleMedium
                             ?.copyWith(
                               fontWeight: FontWeight.bold,
@@ -429,8 +570,31 @@ class _IrrigationScheduleScreenState extends State<IrrigationScheduleScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Water your ${_selectedCrop.toLowerCase()} plants for 45-60 minutes in the early morning. This will provide adequate moisture for the ${_selectedGrowthStage.toLowerCase()} stage.',
+                    recommendation,
                     style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.blue.withOpacity(0.3)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, color: Colors.blue[600], size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'This recommendation is based on your selected crop and growth stage. Tap the filters above to change selections.',
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.copyWith(color: Colors.blue[700]),
+                    ),
                   ),
                 ],
               ),
