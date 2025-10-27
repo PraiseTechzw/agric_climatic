@@ -7,6 +7,7 @@ import '../services/climate_dashboard_service.dart';
 import '../services/weather_data_management_service.dart';
 import '../services/advanced_weather_analysis_service.dart';
 import '../widgets/dashboard_charts.dart';
+import '../widgets/modern_loading_widget.dart';
 
 class EnhancedClimateDashboardScreen extends StatefulWidget {
   const EnhancedClimateDashboardScreen({super.key});
