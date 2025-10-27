@@ -21,25 +21,28 @@ class AdvancedWeatherAnalysisService {
 
       // Basic statistics
       final basicStats = _calculateBasicStatistics(weatherData);
-      
+
       // Seasonal analysis
       final seasonalAnalysis = _analyzeSeasonalPatterns(weatherData);
-      
+
       // Trend analysis
       final trendAnalysis = _analyzeTrends(weatherData);
-      
+
       // Anomaly detection
       final anomalies = _detectAdvancedAnomalies(weatherData);
-      
+
       // Climate indicators
       final climateIndicators = _calculateClimateIndicators(weatherData);
-      
+
       // Agricultural impact analysis
-      final agriculturalImpact = _analyzeAgriculturalImpact(weatherData, location);
-      
+      final agriculturalImpact = _analyzeAgriculturalImpact(
+        weatherData,
+        location,
+      );
+
       // Risk assessment
       final riskAssessment = _assessClimateRisks(weatherData, location);
-      
+
       // Recommendations
       final recommendations = _generateRecommendations(
         basicStats,
@@ -66,7 +69,10 @@ class AdvancedWeatherAnalysisService {
         generatedAt: DateTime.now(),
       );
     } catch (e) {
-      LoggingService.error('Failed to generate comprehensive analysis', error: e);
+      LoggingService.error(
+        'Failed to generate comprehensive analysis',
+        error: e,
+      );
       return WeatherAnalysisReport.empty(location, startDate, endDate);
     }
   }
@@ -88,7 +94,9 @@ class AdvancedWeatherAnalysisService {
         'min': temperatures.reduce((a, b) => a < b ? a : b),
         'max': temperatures.reduce((a, b) => a > b ? a : b),
         'stdDev': _calculateStandardDeviation(temperatures),
-        'range': temperatures.reduce((a, b) => a > b ? a : b) - temperatures.reduce((a, b) => a < b ? a : b),
+        'range':
+            temperatures.reduce((a, b) => a > b ? a : b) -
+            temperatures.reduce((a, b) => a < b ? a : b),
       },
       'humidity': {
         'mean': _calculateMean(humidities),
@@ -121,7 +129,7 @@ class AdvancedWeatherAnalysisService {
   // Analyze seasonal patterns
   Map<String, dynamic> _analyzeSeasonalPatterns(List<Weather> data) {
     final seasonalData = <String, List<Weather>>{};
-    
+
     // Group by season
     for (final weather in data) {
       final season = _getSeason(weather.dateTime.month);
@@ -130,16 +138,16 @@ class AdvancedWeatherAnalysisService {
     }
 
     final analysis = <String, dynamic>{};
-    
+
     for (final entry in seasonalData.entries) {
       final season = entry.key;
       final seasonData = entry.value;
-      
+
       if (seasonData.isNotEmpty) {
         final temps = seasonData.map((w) => w.temperature).toList();
         final precipitations = seasonData.map((w) => w.precipitation).toList();
         final humidities = seasonData.map((w) => w.humidity).toList();
-        
+
         analysis[season] = {
           'avgTemperature': _calculateMean(temps),
           'totalPrecipitation': precipitations.reduce((a, b) => a + b),
@@ -149,7 +157,7 @@ class AdvancedWeatherAnalysisService {
         };
       }
     }
-    
+
     return analysis;
   }
 
@@ -158,8 +166,9 @@ class AdvancedWeatherAnalysisService {
     if (data.length < 2) return {};
 
     // Sort by date
-    final sortedData = List<Weather>.from(data)..sort((a, b) => a.dateTime.compareTo(b.dateTime));
-    
+    final sortedData = List<Weather>.from(data)
+      ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
+
     final temperatures = sortedData.map((w) => w.temperature).toList();
     final precipitations = sortedData.map((w) => w.precipitation).toList();
     final humidities = sortedData.map((w) => w.humidity).toList();
@@ -207,19 +216,23 @@ class AdvancedWeatherAnalysisService {
     for (int i = 0; i < data.length; i++) {
       final weather = data[i];
       final tempZScore = (weather.temperature - tempMean) / tempStdDev;
-      
+
       if (tempZScore.abs() > 2.5) {
-        anomalies.add(WeatherAnomaly(
-          id: 'temp_${weather.id}',
-          type: 'temperature',
-          severity: tempZScore.abs() > 3.0 ? 'high' : 'medium',
-          description: tempZScore > 0 ? 'Unusually high temperature' : 'Unusually low temperature',
-          value: weather.temperature,
-          expectedValue: tempMean,
-          deviation: tempZScore,
-          date: weather.dateTime,
-          impact: _assessAnomalyImpact('temperature', tempZScore),
-        ));
+        anomalies.add(
+          WeatherAnomaly(
+            id: 'temp_${weather.id}',
+            type: 'temperature',
+            severity: tempZScore.abs() > 3.0 ? 'high' : 'medium',
+            description: tempZScore > 0
+                ? 'Unusually high temperature'
+                : 'Unusually low temperature',
+            value: weather.temperature,
+            expectedValue: tempMean,
+            deviation: tempZScore,
+            date: weather.dateTime,
+            impact: _assessAnomalyImpact('temperature', tempZScore),
+          ),
+        );
       }
     }
 
@@ -227,17 +240,24 @@ class AdvancedWeatherAnalysisService {
     for (int i = 0; i < data.length; i++) {
       final weather = data[i];
       if (weather.precipitation > precipMean + (2 * precipStdDev)) {
-        anomalies.add(WeatherAnomaly(
-          id: 'precip_${weather.id}',
-          type: 'precipitation',
-          severity: weather.precipitation > precipMean + (3 * precipStdDev) ? 'high' : 'medium',
-          description: 'Extreme rainfall event',
-          value: weather.precipitation,
-          expectedValue: precipMean,
-          deviation: (weather.precipitation - precipMean) / precipStdDev,
-          date: weather.dateTime,
-          impact: _assessAnomalyImpact('precipitation', (weather.precipitation - precipMean) / precipStdDev),
-        ));
+        anomalies.add(
+          WeatherAnomaly(
+            id: 'precip_${weather.id}',
+            type: 'precipitation',
+            severity: weather.precipitation > precipMean + (3 * precipStdDev)
+                ? 'high'
+                : 'medium',
+            description: 'Extreme rainfall event',
+            value: weather.precipitation,
+            expectedValue: precipMean,
+            deviation: (weather.precipitation - precipMean) / precipStdDev,
+            date: weather.dateTime,
+            impact: _assessAnomalyImpact(
+              'precipitation',
+              (weather.precipitation - precipMean) / precipStdDev,
+            ),
+          ),
+        );
       }
     }
 
@@ -266,10 +286,10 @@ class AdvancedWeatherAnalysisService {
 
     // Drought index
     final droughtIndex = _calculateDroughtIndex(data);
-    
+
     // Heat stress index
     final heatStressIndex = _calculateHeatStressIndex(data);
-    
+
     // Comfort index
     final comfortIndex = _calculateComfortIndex(data);
 
@@ -284,7 +304,10 @@ class AdvancedWeatherAnalysisService {
   }
 
   // Analyze agricultural impact
-  Map<String, dynamic> _analyzeAgriculturalImpact(List<Weather> data, String location) {
+  Map<String, dynamic> _analyzeAgriculturalImpact(
+    List<Weather> data,
+    String location,
+  ) {
     if (data.isEmpty) return {};
 
     final temperatures = data.map((w) => w.temperature).toList();
@@ -293,13 +316,13 @@ class AdvancedWeatherAnalysisService {
 
     // Growing season analysis
     final growingSeason = _analyzeGrowingSeason(data);
-    
+
     // Water stress analysis
     final waterStress = _analyzeWaterStress(data);
-    
+
     // Pest and disease risk
     final pestDiseaseRisk = _analyzePestDiseaseRisk(data);
-    
+
     // Crop suitability
     final cropSuitability = _analyzeCropSuitability(data, location);
 
@@ -314,21 +337,24 @@ class AdvancedWeatherAnalysisService {
   }
 
   // Assess climate risks
-  Map<String, dynamic> _assessClimateRisks(List<Weather> data, String location) {
+  Map<String, dynamic> _assessClimateRisks(
+    List<Weather> data,
+    String location,
+  ) {
     final risks = <String, dynamic>{};
 
     // Drought risk
     risks['drought'] = _assessDroughtRisk(data);
-    
+
     // Flood risk
     risks['flood'] = _assessFloodRisk(data);
-    
+
     // Heat wave risk
     risks['heatWave'] = _assessHeatWaveRisk(data);
-    
+
     // Frost risk
     risks['frost'] = _assessFrostRisk(data);
-    
+
     // Wind damage risk
     risks['windDamage'] = _assessWindDamageRisk(data);
 
@@ -351,20 +377,23 @@ class AdvancedWeatherAnalysisService {
     if (tempStats != null) {
       final avgTemp = tempStats['mean'] as double;
       if (avgTemp > 28) {
-        recommendations.add(WeatherRecommendation(
-          id: 'temp_high_${DateTime.now().millisecondsSinceEpoch}',
-          category: 'temperature',
-          priority: 'high',
-          title: 'High Temperature Management',
-          description: 'Average temperatures are above optimal for most crops. Consider heat-tolerant varieties and irrigation.',
-          actions: [
-            'Plant heat-tolerant crop varieties',
-            'Increase irrigation frequency',
-            'Use mulching to reduce soil temperature',
-            'Consider shade structures for sensitive crops',
-          ],
-          impact: 'Prevents heat stress and maintains crop productivity',
-        ));
+        recommendations.add(
+          WeatherRecommendation(
+            id: 'temp_high_${DateTime.now().millisecondsSinceEpoch}',
+            category: 'temperature',
+            priority: 'high',
+            title: 'High Temperature Management',
+            description:
+                'Average temperatures are above optimal for most crops. Consider heat-tolerant varieties and irrigation.',
+            actions: [
+              'Plant heat-tolerant crop varieties',
+              'Increase irrigation frequency',
+              'Use mulching to reduce soil temperature',
+              'Consider shade structures for sensitive crops',
+            ],
+            impact: 'Prevents heat stress and maintains crop productivity',
+          ),
+        );
       }
     }
 
@@ -373,22 +402,25 @@ class AdvancedWeatherAnalysisService {
     if (precipStats != null) {
       final totalPrecip = precipStats['total'] as double;
       final rainyDays = precipStats['rainyDays'] as int;
-      
+
       if (totalPrecip < 500) {
-        recommendations.add(WeatherRecommendation(
-          id: 'precip_low_${DateTime.now().millisecondsSinceEpoch}',
-          category: 'water',
-          priority: 'high',
-          title: 'Water Conservation Required',
-          description: 'Low precipitation levels detected. Implement water conservation strategies.',
-          actions: [
-            'Implement drip irrigation systems',
-            'Use drought-resistant crop varieties',
-            'Practice water harvesting techniques',
-            'Monitor soil moisture levels closely',
-          ],
-          impact: 'Ensures water availability for crops during dry periods',
-        ));
+        recommendations.add(
+          WeatherRecommendation(
+            id: 'precip_low_${DateTime.now().millisecondsSinceEpoch}',
+            category: 'water',
+            priority: 'high',
+            title: 'Water Conservation Required',
+            description:
+                'Low precipitation levels detected. Implement water conservation strategies.',
+            actions: [
+              'Implement drip irrigation systems',
+              'Use drought-resistant crop varieties',
+              'Practice water harvesting techniques',
+              'Monitor soil moisture levels closely',
+            ],
+            impact: 'Ensures water availability for crops during dry periods',
+          ),
+        );
       }
     }
 
@@ -396,17 +428,20 @@ class AdvancedWeatherAnalysisService {
     for (final entry in riskAssessment.entries) {
       final riskType = entry.key;
       final riskLevel = entry.value as String;
-      
+
       if (riskLevel == 'high') {
-        recommendations.add(WeatherRecommendation(
-          id: 'risk_${riskType}_${DateTime.now().millisecondsSinceEpoch}',
-          category: 'risk_management',
-          priority: 'high',
-          title: '${riskType.toUpperCase()} Risk Mitigation',
-          description: 'High risk of $riskType detected. Implement protective measures.',
-          actions: _getRiskMitigationActions(riskType),
-          impact: 'Reduces potential damage from weather extremes',
-        ));
+        recommendations.add(
+          WeatherRecommendation(
+            id: 'risk_${riskType}_${DateTime.now().millisecondsSinceEpoch}',
+            category: 'risk_management',
+            priority: 'high',
+            title: '${riskType.toUpperCase()} Risk Mitigation',
+            description:
+                'High risk of $riskType detected. Implement protective measures.',
+            actions: _getRiskMitigationActions(riskType),
+            impact: 'Reduces potential damage from weather extremes',
+          ),
+        );
       }
     }
 
@@ -440,40 +475,52 @@ class AdvancedWeatherAnalysisService {
   double _calculateStandardDeviation(List<double> values) {
     if (values.length < 2) return 0.0;
     final mean = _calculateMean(values);
-    final variance = values.map((x) => (x - mean) * (x - mean)).reduce((a, b) => a + b) / values.length;
+    final variance =
+        values.map((x) => (x - mean) * (x - mean)).reduce((a, b) => a + b) /
+        values.length;
     return sqrt(variance);
   }
 
   double _calculateLinearTrend(List<double> values) {
     if (values.length < 2) return 0.0;
-    
+
     final n = values.length;
     final x = List.generate(n, (i) => i.toDouble());
-    
+
     final sumX = x.reduce((a, b) => a + b);
     final sumY = values.reduce((a, b) => a + b);
-    final sumXY = x.asMap().entries.map((e) => e.key * values[e.key]).reduce((a, b) => a + b);
+    final sumXY = x
+        .asMap()
+        .entries
+        .map((e) => e.key * values[e.key])
+        .reduce((a, b) => a + b);
     final sumXX = x.map((x) => x * x).reduce((a, b) => a + b);
-    
+
     return (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
   }
 
   double _calculateCorrelation(List<double> values) {
     if (values.length < 2) return 0.0;
-    
+
     final x = List.generate(values.length, (i) => i.toDouble());
     final y = values;
-    
+
     final n = values.length;
     final sumX = x.reduce((a, b) => a + b);
     final sumY = y.reduce((a, b) => a + b);
-    final sumXY = x.asMap().entries.map((e) => e.key * y[e.key]).reduce((a, b) => a + b);
+    final sumXY = x
+        .asMap()
+        .entries
+        .map((e) => e.key * y[e.key])
+        .reduce((a, b) => a + b);
     final sumXX = x.map((x) => x * x).reduce((a, b) => a + b);
     final sumYY = y.map((y) => y * y).reduce((a, b) => a + b);
-    
+
     final numerator = n * sumXY - sumX * sumY;
-    final denominator = sqrt((n * sumXX - sumX * sumX) * (n * sumYY - sumY * sumY));
-    
+    final denominator = sqrt(
+      (n * sumXX - sumX * sumX) * (n * sumYY - sumY * sumY),
+    );
+
     return denominator == 0 ? 0.0 : numerator / denominator;
   }
 
@@ -493,45 +540,45 @@ class AdvancedWeatherAnalysisService {
     final precipitations = data.map((w) => w.precipitation).toList();
     final avgPrecip = _calculateMean(precipitations);
     final expectedPrecip = 2.0; // mm per day average
-    
+
     return max(0.0, (expectedPrecip - avgPrecip) / expectedPrecip);
   }
 
   double _calculateHeatStressIndex(List<Weather> data) {
     final temperatures = data.map((w) => w.temperature).toList();
     final humidities = data.map((w) => w.humidity).toList();
-    
+
     double heatStress = 0.0;
     for (int i = 0; i < temperatures.length; i++) {
       final temp = temperatures[i];
       final humidity = humidities[i];
-      
+
       // Heat index calculation
       final heatIndex = temp + (humidity * 0.1);
       if (heatIndex > 30) {
         heatStress += (heatIndex - 30) / 10;
       }
     }
-    
+
     return heatStress / temperatures.length;
   }
 
   double _calculateComfortIndex(List<Weather> data) {
     final temperatures = data.map((w) => w.temperature).toList();
     final humidities = data.map((w) => w.humidity).toList();
-    
+
     double comfort = 0.0;
     for (int i = 0; i < temperatures.length; i++) {
       final temp = temperatures[i];
       final humidity = humidities[i];
-      
+
       // Comfort zone: 18-25°C, 40-70% humidity
       final tempComfort = 1.0 - ((temp - 21.5).abs() / 10.0);
       final humidityComfort = 1.0 - ((humidity - 55.0).abs() / 30.0);
-      
+
       comfort += (tempComfort + humidityComfort) / 2;
     }
-    
+
     return comfort / temperatures.length;
   }
 
@@ -542,33 +589,37 @@ class AdvancedWeatherAnalysisService {
   double _calculateExtremesIndex(List<Weather> data) {
     final temperatures = data.map((w) => w.temperature).toList();
     final precipitations = data.map((w) => w.precipitation).toList();
-    
+
     final tempMean = _calculateMean(temperatures);
-    final tempStdDev = _calculateStandardDeviation(temperations);
+    final tempStdDev = _calculateStandardDeviation(temperatures);
     final precipMean = _calculateMean(precipitations);
     final precipStdDev = _calculateStandardDeviation(precipitations);
-    
+
     int extremes = 0;
     for (final weather in data) {
       final tempZScore = (weather.temperature - tempMean) / tempStdDev;
       final precipZScore = (weather.precipitation - precipMean) / precipStdDev;
-      
+
       if (tempZScore.abs() > 2.0 || precipZScore.abs() > 2.0) {
         extremes++;
       }
     }
-    
+
     return extremes / data.length;
   }
 
   Map<String, dynamic> _analyzeGrowingSeason(List<Weather> data) {
     // Simplified growing season analysis
     final temperatures = data.map((w) => w.temperature).toList();
-    final avgTemp = _calculateMean(temperations);
-    
+    final avgTemp = _calculateMean(temperatures);
+
     return {
       'length': avgTemp > 15 ? 'long' : 'short',
-      'quality': avgTemp > 20 ? 'excellent' : avgTemp > 15 ? 'good' : 'poor',
+      'quality': avgTemp > 20
+          ? 'excellent'
+          : avgTemp > 15
+          ? 'good'
+          : 'poor',
       'startDate': 'March',
       'endDate': 'November',
     };
@@ -577,42 +628,53 @@ class AdvancedWeatherAnalysisService {
   Map<String, dynamic> _analyzeWaterStress(List<Weather> data) {
     final precipitations = data.map((w) => w.precipitation).toList();
     final totalPrecip = precipitations.reduce((a, b) => a + b);
-    
+
     return {
-      'level': totalPrecip < 500 ? 'high' : totalPrecip < 800 ? 'moderate' : 'low',
-      'risk': totalPrecip < 500 ? 'severe' : totalPrecip < 800 ? 'moderate' : 'minimal',
+      'level': totalPrecip < 500
+          ? 'high'
+          : totalPrecip < 800
+          ? 'moderate'
+          : 'low',
+      'risk': totalPrecip < 500
+          ? 'severe'
+          : totalPrecip < 800
+          ? 'moderate'
+          : 'minimal',
     };
   }
 
   Map<String, dynamic> _analyzePestDiseaseRisk(List<Weather> data) {
     final temperatures = data.map((w) => w.temperature).toList();
     final humidities = data.map((w) => w.humidity).toList();
-    
+
     final avgTemp = _calculateMean(temperatures);
     final avgHumidity = _calculateMean(humidities);
-    
+
     String risk = 'low';
     if (avgTemp > 25 && avgHumidity > 70) {
       risk = 'high';
     } else if (avgTemp > 22 && avgHumidity > 60) {
       risk = 'moderate';
     }
-    
+
     return {
       'level': risk,
       'factors': ['temperature', 'humidity'],
     };
   }
 
-  Map<String, dynamic> _analyzeCropSuitability(List<Weather> data, String location) {
+  Map<String, dynamic> _analyzeCropSuitability(
+    List<Weather> data,
+    String location,
+  ) {
     final temperatures = data.map((w) => w.temperature).toList();
     final precipitations = data.map((w) => w.precipitation).toList();
-    
-    final avgTemp = _calculateMean(temperations);
+
+    final avgTemp = _calculateMean(temperatures);
     final totalPrecip = precipitations.reduce((a, b) => a + b);
-    
+
     final suitableCrops = <String>[];
-    
+
     if (avgTemp >= 18 && avgTemp <= 24 && totalPrecip >= 500) {
       suitableCrops.addAll(['maize', 'wheat', 'soybeans']);
     }
@@ -622,10 +684,12 @@ class AdvancedWeatherAnalysisService {
     if (avgTemp >= 22 && avgTemp <= 28 && totalPrecip >= 600) {
       suitableCrops.addAll(['cotton', 'tobacco']);
     }
-    
+
     return {
       'suitableCrops': suitableCrops,
-      'temperatureSuitability': avgTemp >= 18 && avgTemp <= 28 ? 'good' : 'poor',
+      'temperatureSuitability': avgTemp >= 18 && avgTemp <= 28
+          ? 'good'
+          : 'poor',
       'waterSuitability': totalPrecip >= 500 ? 'good' : 'poor',
     };
   }
@@ -633,26 +697,26 @@ class AdvancedWeatherAnalysisService {
   double _calculateYieldPotential(List<Weather> data) {
     final temperatures = data.map((w) => w.temperature).toList();
     final precipitations = data.map((w) => w.precipitation).toList();
-    
-    final avgTemp = _calculateMean(temperations);
+
+    final avgTemp = _calculateMean(temperatures);
     final totalPrecip = precipitations.reduce((a, b) => a + b);
-    
+
     double yieldPotential = 70.0; // Base yield percentage
-    
+
     // Temperature impact
     if (avgTemp >= 18 && avgTemp <= 24) {
       yieldPotential += 20.0;
     } else if (avgTemp < 15 || avgTemp > 30) {
       yieldPotential -= 30.0;
     }
-    
+
     // Precipitation impact
     if (totalPrecip >= 500 && totalPrecip <= 1000) {
       yieldPotential += 15.0;
     } else if (totalPrecip < 300) {
       yieldPotential -= 25.0;
     }
-    
+
     return yieldPotential.clamp(0.0, 100.0);
   }
 
@@ -664,7 +728,7 @@ class AdvancedWeatherAnalysisService {
   String _assessDroughtRisk(List<Weather> data) {
     final precipitations = data.map((w) => w.precipitation).toList();
     final totalPrecip = precipitations.reduce((a, b) => a + b);
-    
+
     if (totalPrecip < 400) return 'high';
     if (totalPrecip < 600) return 'moderate';
     return 'low';
@@ -673,7 +737,7 @@ class AdvancedWeatherAnalysisService {
   String _assessFloodRisk(List<Weather> data) {
     final precipitations = data.map((w) => w.precipitation).toList();
     final maxPrecip = precipitations.reduce((a, b) => a > b ? a : b);
-    
+
     if (maxPrecip > 50) return 'high';
     if (maxPrecip > 25) return 'moderate';
     return 'low';
@@ -682,7 +746,7 @@ class AdvancedWeatherAnalysisService {
   String _assessHeatWaveRisk(List<Weather> data) {
     final temperatures = data.map((w) => w.temperature).toList();
     final maxTemp = temperatures.reduce((a, b) => a > b ? a : b);
-    
+
     if (maxTemp > 35) return 'high';
     if (maxTemp > 30) return 'moderate';
     return 'low';
@@ -691,7 +755,7 @@ class AdvancedWeatherAnalysisService {
   String _assessFrostRisk(List<Weather> data) {
     final temperatures = data.map((w) => w.temperature).toList();
     final minTemp = temperatures.reduce((a, b) => a < b ? a : b);
-    
+
     if (minTemp < 0) return 'high';
     if (minTemp < 5) return 'moderate';
     return 'low';
@@ -700,7 +764,7 @@ class AdvancedWeatherAnalysisService {
   String _assessWindDamageRisk(List<Weather> data) {
     final windSpeeds = data.map((w) => w.windSpeed).toList();
     final maxWind = windSpeeds.reduce((a, b) => a > b ? a : b);
-    
+
     if (maxWind > 20) return 'high';
     if (maxWind > 15) return 'moderate';
     return 'low';
@@ -781,7 +845,11 @@ class WeatherAnalysisReport {
     required this.generatedAt,
   });
 
-  factory WeatherAnalysisReport.empty(String location, DateTime startDate, DateTime endDate) {
+  factory WeatherAnalysisReport.empty(
+    String location,
+    DateTime startDate,
+    DateTime endDate,
+  ) {
     return WeatherAnalysisReport(
       location: location,
       startDate: startDate,

@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import '../models/weather.dart';
@@ -9,11 +10,12 @@ import 'logging_service.dart';
 
 class WeatherDataManagementService {
   final Random _random = Random();
-  
+
   // In-memory storage for demo purposes
   static final Map<String, List<Weather>> _weatherDataStorage = {};
   static final Map<String, List<WeatherPattern>> _patternStorage = {};
-  static final Map<String, List<ClimateDashboardData>> _dashboardDataStorage = {};
+  static final Map<String, List<ClimateDashboardData>> _dashboardDataStorage =
+      {};
 
   // Upload weather data from CSV/JSON files
   Future<bool> uploadWeatherData({
@@ -35,11 +37,13 @@ class WeatherDataManagementService {
 
       // Store the data
       _weatherDataStorage[location] = weatherData;
-      
+
       // Generate dashboard data
       await _generateDashboardDataFromWeather(location, weatherData);
-      
-      LoggingService.info('Uploaded ${weatherData.length} weather records for $location');
+
+      LoggingService.info(
+        'Uploaded ${weatherData.length} weather records for $location',
+      );
       return true;
     } catch (e) {
       LoggingService.error('Failed to upload weather data', error: e);
@@ -64,7 +68,9 @@ class WeatherDataManagementService {
       }
 
       _patternStorage[location] = patterns;
-      LoggingService.info('Uploaded ${patterns.length} weather patterns for $location');
+      LoggingService.info(
+        'Uploaded ${patterns.length} weather patterns for $location',
+      );
       return true;
     } catch (e) {
       LoggingService.error('Failed to upload weather patterns', error: e);
@@ -78,7 +84,7 @@ class WeatherDataManagementService {
       _weatherDataStorage.remove(location);
       _patternStorage.remove(location);
       _dashboardDataStorage.remove(location);
-      
+
       LoggingService.info('Deleted all weather data for $location');
       return true;
     } catch (e) {
@@ -126,10 +132,10 @@ class WeatherDataManagementService {
       );
 
       weatherData[index] = updated;
-      
+
       // Regenerate dashboard data
       await _generateDashboardDataFromWeather(location, weatherData);
-      
+
       LoggingService.info('Updated weather record $recordId for $location');
       return true;
     } catch (e) {
@@ -147,12 +153,15 @@ class WeatherDataManagementService {
       if (_weatherDataStorage[location] == null) {
         _weatherDataStorage[location] = [];
       }
-      
+
       _weatherDataStorage[location]!.add(weather);
-      
+
       // Regenerate dashboard data
-      await _generateDashboardDataFromWeather(location, _weatherDataStorage[location]!);
-      
+      await _generateDashboardDataFromWeather(
+        location,
+        _weatherDataStorage[location]!,
+      );
+
       LoggingService.info('Added new weather record for $location');
       return true;
     } catch (e) {
@@ -183,10 +192,12 @@ class WeatherDataManagementService {
       if (weatherData.isEmpty) return '';
 
       final buffer = StringBuffer();
-      
+
       // CSV Header
-      buffer.writeln('Date,Time,Temperature,Humidity,Wind Speed,Precipitation,Pressure,Condition,Description');
-      
+      buffer.writeln(
+        'Date,Time,Temperature,Humidity,Wind Speed,Precipitation,Pressure,Condition,Description',
+      );
+
       // CSV Data
       for (final weather in weatherData) {
         buffer.writeln(
@@ -198,10 +209,10 @@ class WeatherDataManagementService {
           '${weather.precipitation},'
           '${weather.pressure},'
           '${weather.condition},'
-          '${weather.description}'
+          '${weather.description}',
         );
       }
-      
+
       return buffer.toString();
     } catch (e) {
       LoggingService.error('Failed to export weather data', error: e);
@@ -221,7 +232,7 @@ class WeatherDataManagementService {
         'recordCount': weatherData.length,
         'data': weatherData.map((w) => w.toJson()).toList(),
       };
-      
+
       return jsonEncode(jsonData);
     } catch (e) {
       LoggingService.error('Failed to export weather data to JSON', error: e);
@@ -233,15 +244,15 @@ class WeatherDataManagementService {
   List<Weather> _parseCSVWeatherData(String content, String location) {
     final lines = content.split('\n');
     final weatherData = <Weather>[];
-    
+
     // Skip header line
     for (int i = 1; i < lines.length; i++) {
       final line = lines[i].trim();
       if (line.isEmpty) continue;
-      
+
       final fields = line.split(',');
       if (fields.length < 9) continue;
-      
+
       try {
         final dateTime = DateTime.parse('${fields[0]}T${fields[1]}');
         final weather = Weather(
@@ -261,7 +272,7 @@ class WeatherDataManagementService {
         LoggingService.warning('Failed to parse CSV line $i', error: e);
       }
     }
-    
+
     return weatherData;
   }
 
@@ -270,18 +281,21 @@ class WeatherDataManagementService {
     try {
       final jsonData = jsonDecode(content);
       final weatherData = <Weather>[];
-      
+
       if (jsonData is Map && jsonData['data'] is List) {
         for (final item in jsonData['data']) {
           try {
             final weather = Weather.fromJson(item);
             weatherData.add(weather);
           } catch (e) {
-            LoggingService.warning('Failed to parse JSON weather item', error: e);
+            LoggingService.warning(
+              'Failed to parse JSON weather item',
+              error: e,
+            );
           }
         }
       }
-      
+
       return weatherData;
     } catch (e) {
       LoggingService.error('Failed to parse JSON weather data', error: e);
@@ -294,18 +308,21 @@ class WeatherDataManagementService {
     try {
       final jsonData = jsonDecode(content);
       final patterns = <WeatherPattern>[];
-      
+
       if (jsonData is List) {
         for (final item in jsonData) {
           try {
             final pattern = WeatherPattern.fromJson(item);
             patterns.add(pattern);
           } catch (e) {
-            LoggingService.warning('Failed to parse JSON pattern item', error: e);
+            LoggingService.warning(
+              'Failed to parse JSON pattern item',
+              error: e,
+            );
           }
         }
       }
-      
+
       return patterns;
     } catch (e) {
       LoggingService.error('Failed to parse JSON patterns', error: e);
@@ -314,7 +331,10 @@ class WeatherDataManagementService {
   }
 
   // Generate dashboard data from weather data
-  Future<void> _generateDashboardDataFromWeather(String location, List<Weather> weatherData) async {
+  Future<void> _generateDashboardDataFromWeather(
+    String location,
+    List<Weather> weatherData,
+  ) async {
     try {
       if (weatherData.isEmpty) return;
 
@@ -327,7 +347,7 @@ class WeatherDataManagementService {
       }
 
       final dashboardData = <ClimateDashboardData>[];
-      
+
       for (final entry in yearlyData.entries) {
         final year = entry.key;
         final yearData = entry.value;
@@ -337,10 +357,13 @@ class WeatherDataManagementService {
         final humidities = yearData.map((w) => w.humidity).toList();
         final windSpeeds = yearData.map((w) => w.windSpeed).toList();
 
-        final averageTemperature = temperatures.reduce((a, b) => a + b) / temperatures.length;
+        final averageTemperature =
+            temperatures.reduce((a, b) => a + b) / temperatures.length;
         final totalPrecipitation = precipitations.reduce((a, b) => a + b);
-        final averageHumidity = humidities.reduce((a, b) => a + b) / humidities.length;
-        final averageWindSpeed = windSpeeds.reduce((a, b) => a + b) / windSpeeds.length;
+        final averageHumidity =
+            humidities.reduce((a, b) => a + b) / humidities.length;
+        final averageWindSpeed =
+            windSpeeds.reduce((a, b) => a + b) / windSpeeds.length;
         final rainyDays = yearData.where((w) => w.precipitation > 0).length;
         final maxTemperature = temperatures.reduce((a, b) => a > b ? a : b);
         final minTemperature = temperatures.reduce((a, b) => a < b ? a : b);
@@ -353,24 +376,27 @@ class WeatherDataManagementService {
 
         final anomalies = _detectAnomalies(yearData);
 
-        dashboardData.add(ClimateDashboardData(
-          id: '${location}_$year',
-          location: location,
-          date: DateTime(year),
-          averageTemperature: averageTemperature,
-          totalPrecipitation: totalPrecipitation,
-          averageHumidity: averageHumidity,
-          averageWindSpeed: averageWindSpeed,
-          rainyDays: rainyDays,
-          maxTemperature: maxTemperature,
-          minTemperature: minTemperature,
-          trends: trends,
-          anomalies: anomalies,
-          period: 'yearly',
-        ));
+        dashboardData.add(
+          ClimateDashboardData(
+            id: '${location}_$year',
+            location: location,
+            date: DateTime(year),
+            averageTemperature: averageTemperature,
+            totalPrecipitation: totalPrecipitation,
+            averageHumidity: averageHumidity,
+            averageWindSpeed: averageWindSpeed,
+            rainyDays: rainyDays,
+            maxTemperature: maxTemperature,
+            minTemperature: minTemperature,
+            trends: trends,
+            anomalies: anomalies,
+            period: 'yearly',
+          ),
+        );
       }
 
-      _dashboardDataStorage[location] = dashboardData..sort((a, b) => a.date.compareTo(b.date));
+      _dashboardDataStorage[location] = dashboardData
+        ..sort((a, b) => a.date.compareTo(b.date));
     } catch (e) {
       LoggingService.error('Failed to generate dashboard data', error: e);
     }
@@ -379,15 +405,19 @@ class WeatherDataManagementService {
   // Calculate trend using linear regression
   double _calculateTrend(List<double> values) {
     if (values.length < 2) return 0.0;
-    
+
     final n = values.length;
     final x = List.generate(n, (i) => i.toDouble());
-    
+
     final sumX = x.reduce((a, b) => a + b);
     final sumY = values.reduce((a, b) => a + b);
-    final sumXY = x.asMap().entries.map((e) => e.key * values[e.key]).reduce((a, b) => a + b);
+    final sumXY = x
+        .asMap()
+        .entries
+        .map((e) => e.key * values[e.key])
+        .reduce((a, b) => a + b);
     final sumXX = x.map((x) => x * x).reduce((a, b) => a + b);
-    
+
     final slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
     return slope;
   }
