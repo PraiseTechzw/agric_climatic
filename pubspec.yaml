@@ -51,6 +51,7 @@ dependencies:
   timezone: ^0.10.1
   open_meteo: ^2.1.8
   intl_phone_number_input: ^0.7.4
+  file_picker: ^8.0.0+1
 
 dev_dependencies:
   flutter_test:

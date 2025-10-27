@@ -11,7 +11,7 @@ import 'services/notification_service.dart';
 import 'widgets/auth_wrapper.dart';
 import 'widgets/auth_guard.dart';
 import 'widgets/auth_status_indicator.dart';
-import 'screens/climate_dashboard_screen.dart';
+import 'screens/enhanced_climate_dashboard_screen.dart';
 import 'screens/weather_screen.dart';
 import 'screens/weather_alerts_screen.dart';
 import 'screens/enhanced_predictions_screen.dart';
@@ -146,7 +146,7 @@ class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
 
   final List<Widget> _screens = [
-    const ClimateDashboardScreen(),
+    const EnhancedClimateDashboardScreen(),
     const WeatherScreen(),
     const WeatherAlertsScreen(),
     const EnhancedPredictionsScreen(),
