@@ -358,7 +358,10 @@ class _EnhancedClimateDashboardScreenState extends State<EnhancedClimateDashboar
         ),
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const ModernLoadingWidget(
+              message: 'Loading climate data...',
+              size: 60,
+            )
           : TabBarView(
               controller: _tabController,
               children: [
@@ -609,15 +612,8 @@ class _EnhancedClimateDashboardScreenState extends State<EnhancedClimateDashboar
 
   Widget _buildAnalysisTab() {
     if (_isAnalyzing) {
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text('Generating comprehensive analysis...'),
-          ],
-        ),
+      return const PulseLoadingWidget(
+        message: 'Generating comprehensive analysis...',
       );
     }
 

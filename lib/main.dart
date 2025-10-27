@@ -417,18 +417,34 @@ class _MainScreenState extends State<MainScreen> {
         bottomNavigationBar: Container(
           margin: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            borderRadius: BorderRadius.circular(25),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.white.withOpacity(0.95),
+                Colors.white.withOpacity(0.9),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(
+              color: const Color(0xFF2E7D32).withOpacity(0.1),
+              width: 1,
+            ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.1),
+                color: const Color(0xFF2E7D32).withOpacity(0.1),
                 blurRadius: 20,
-                offset: const Offset(0, 10),
+                offset: const Offset(0, 8),
+              ),
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
               ),
             ],
           ),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(25),
+            borderRadius: BorderRadius.circular(28),
             child: BottomNavigationBar(
               currentIndex: _selectedIndex,
               onTap: (index) {
@@ -438,8 +454,8 @@ class _MainScreenState extends State<MainScreen> {
               },
               type: BottomNavigationBarType.fixed,
               backgroundColor: Colors.transparent,
-              selectedItemColor: Theme.of(context).colorScheme.primary,
-              unselectedItemColor: Colors.grey[500],
+              selectedItemColor: const Color(0xFF2E7D32),
+              unselectedItemColor: const Color(0xFF9CA3AF),
               selectedLabelStyle: const TextStyle(
                 fontWeight: FontWeight.w600,
                 fontSize: 12,
@@ -452,14 +468,25 @@ class _MainScreenState extends State<MainScreen> {
               items: [
                 BottomNavigationBarItem(
                   icon: Container(
-                    padding: const EdgeInsets.all(8),
+                    padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: _selectedIndex == 0
-                          ? Theme.of(
-                              context,
-                            ).colorScheme.primary.withOpacity(0.1)
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(12),
+                      gradient: _selectedIndex == 0
+                          ? LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                const Color(0xFF2E7D32).withOpacity(0.2),
+                                const Color(0xFF4CAF50).withOpacity(0.1),
+                              ],
+                            )
+                          : null,
+                      borderRadius: BorderRadius.circular(16),
+                      border: _selectedIndex == 0
+                          ? Border.all(
+                              color: const Color(0xFF2E7D32).withOpacity(0.3),
+                              width: 1,
+                            )
+                          : null,
                     ),
                     child: Icon(
                       _selectedIndex == 0
