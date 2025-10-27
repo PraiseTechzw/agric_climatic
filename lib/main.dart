@@ -11,6 +11,7 @@ import 'services/notification_service.dart';
 import 'widgets/auth_wrapper.dart';
 import 'widgets/auth_guard.dart';
 import 'widgets/auth_status_indicator.dart';
+import 'screens/climate_dashboard_screen.dart';
 import 'screens/weather_screen.dart';
 import 'screens/weather_alerts_screen.dart';
 import 'screens/enhanced_predictions_screen.dart';
@@ -145,6 +146,7 @@ class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
 
   final List<Widget> _screens = [
+    const ClimateDashboardScreen(),
     const WeatherScreen(),
     const WeatherAlertsScreen(),
     const EnhancedPredictionsScreen(),
@@ -262,12 +264,12 @@ class _MainScreenState extends State<MainScreen> {
                     ),
                     child: Icon(
                       _selectedIndex == 0
-                          ? Icons.wb_sunny
-                          : Icons.wb_sunny_outlined,
+                          ? Icons.dashboard
+                          : Icons.dashboard_outlined,
                       size: 24,
                     ),
                   ),
-                  label: 'Weather',
+                  label: 'Dashboard',
                 ),
                 BottomNavigationBarItem(
                   icon: Container(
@@ -400,15 +402,16 @@ class _MainScreenState extends State<MainScreen> {
               ],
             ),
           ),
-          _buildDrawerItem(context, 'Weather', Icons.wb_sunny, 0),
-          _buildDrawerItem(context, 'Weather Alerts', Icons.warning, 1),
-          _buildDrawerItem(context, 'Predictions', Icons.analytics, 2),
-          _buildDrawerItem(context, 'Recommendations', Icons.lightbulb, 3),
-          _buildDrawerItem(context, 'Irrigation Schedule', Icons.water_drop, 4),
-          _buildDrawerItem(context, 'Analytics', Icons.trending_up, 5),
-          _buildDrawerItem(context, 'Soil Data', Icons.terrain, 6),
-          _buildDrawerItem(context, 'AI Insights', Icons.psychology, 7),
-          _buildDrawerItem(context, 'Help & Support', Icons.help, 8),
+          _buildDrawerItem(context, 'Climate Dashboard', Icons.dashboard, 0),
+          _buildDrawerItem(context, 'Weather', Icons.wb_sunny, 1),
+          _buildDrawerItem(context, 'Weather Alerts', Icons.warning, 2),
+          _buildDrawerItem(context, 'Predictions', Icons.analytics, 3),
+          _buildDrawerItem(context, 'Recommendations', Icons.lightbulb, 4),
+          _buildDrawerItem(context, 'Irrigation Schedule', Icons.water_drop, 5),
+          _buildDrawerItem(context, 'Analytics', Icons.trending_up, 6),
+          _buildDrawerItem(context, 'Soil Data', Icons.terrain, 7),
+          _buildDrawerItem(context, 'AI Insights', Icons.psychology, 8),
+          _buildDrawerItem(context, 'Help & Support', Icons.help, 9),
           const Divider(),
           ListTile(
             leading: const Icon(Icons.logout),
