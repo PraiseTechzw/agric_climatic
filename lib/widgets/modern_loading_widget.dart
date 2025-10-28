@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:math';
 
 class ModernLoadingWidget extends StatefulWidget {
   final String? message;

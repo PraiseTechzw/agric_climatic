@@ -345,16 +345,11 @@ class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
 
   final List<Widget> _screens = [
-    const EnhancedClimateDashboardScreen(),
-    const WeatherScreen(),
-    const WeatherAlertsScreen(),
-    const EnhancedPredictionsScreen(),
-    const RecommendationsScreen(),
-    const IrrigationScheduleScreen(),
-    const AnalyticsScreen(),
-    const SoilDataScreen(),
-    const AIInsightsScreen(),
-    const HelpScreen(),
+    const EnhancedClimateDashboardScreen(), // 0 - Dashboard
+    const WeatherAlertsScreen(),           // 1 - Alerts  
+    const EnhancedPredictionsScreen(),     // 2 - Predictions
+    const RecommendationsScreen(),         // 3 - Recommendations
+    const IrrigationScheduleScreen(),      // 4 - Irrigation
   ];
 
   @override
@@ -499,14 +494,25 @@ class _MainScreenState extends State<MainScreen> {
                 ),
                 BottomNavigationBarItem(
                   icon: Container(
-                    padding: const EdgeInsets.all(8),
+                    padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: _selectedIndex == 1
-                          ? Theme.of(
-                              context,
-                            ).colorScheme.primary.withOpacity(0.1)
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(12),
+                      gradient: _selectedIndex == 1
+                          ? LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                const Color(0xFFE53E3E).withOpacity(0.2),
+                                const Color(0xFFF56565).withOpacity(0.1),
+                              ],
+                            )
+                          : null,
+                      borderRadius: BorderRadius.circular(16),
+                      border: _selectedIndex == 1
+                          ? Border.all(
+                              color: const Color(0xFFE53E3E).withOpacity(0.3),
+                              width: 1,
+                            )
+                          : null,
                     ),
                     child: Icon(
                       _selectedIndex == 1
@@ -519,14 +525,25 @@ class _MainScreenState extends State<MainScreen> {
                 ),
                 BottomNavigationBarItem(
                   icon: Container(
-                    padding: const EdgeInsets.all(8),
+                    padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: _selectedIndex == 2
-                          ? Theme.of(
-                              context,
-                            ).colorScheme.primary.withOpacity(0.1)
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(12),
+                      gradient: _selectedIndex == 2
+                          ? LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                const Color(0xFF3182CE).withOpacity(0.2),
+                                const Color(0xFF63B3ED).withOpacity(0.1),
+                              ],
+                            )
+                          : null,
+                      borderRadius: BorderRadius.circular(16),
+                      border: _selectedIndex == 2
+                          ? Border.all(
+                              color: const Color(0xFF3182CE).withOpacity(0.3),
+                              width: 1,
+                            )
+                          : null,
                     ),
                     child: Icon(
                       _selectedIndex == 2
@@ -539,14 +556,25 @@ class _MainScreenState extends State<MainScreen> {
                 ),
                 BottomNavigationBarItem(
                   icon: Container(
-                    padding: const EdgeInsets.all(8),
+                    padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: _selectedIndex == 3
-                          ? Theme.of(
-                              context,
-                            ).colorScheme.primary.withOpacity(0.1)
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(12),
+                      gradient: _selectedIndex == 3
+                          ? LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                const Color(0xFFD69E2E).withOpacity(0.2),
+                                const Color(0xFFF6E05E).withOpacity(0.1),
+                              ],
+                            )
+                          : null,
+                      borderRadius: BorderRadius.circular(16),
+                      border: _selectedIndex == 3
+                          ? Border.all(
+                              color: const Color(0xFFD69E2E).withOpacity(0.3),
+                              width: 1,
+                            )
+                          : null,
                     ),
                     child: Icon(
                       _selectedIndex == 3
@@ -559,14 +587,25 @@ class _MainScreenState extends State<MainScreen> {
                 ),
                 BottomNavigationBarItem(
                   icon: Container(
-                    padding: const EdgeInsets.all(8),
+                    padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: _selectedIndex == 4
-                          ? Theme.of(
-                              context,
-                            ).colorScheme.primary.withOpacity(0.1)
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(12),
+                      gradient: _selectedIndex == 4
+                          ? LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                const Color(0xFF3182CE).withOpacity(0.2),
+                                const Color(0xFF63B3ED).withOpacity(0.1),
+                              ],
+                            )
+                          : null,
+                      borderRadius: BorderRadius.circular(16),
+                      border: _selectedIndex == 4
+                          ? Border.all(
+                              color: const Color(0xFF3182CE).withOpacity(0.3),
+                              width: 1,
+                            )
+                          : null,
                     ),
                     child: Icon(
                       _selectedIndex == 4
@@ -629,15 +668,16 @@ class _MainScreenState extends State<MainScreen> {
             ),
           ),
           _buildDrawerItem(context, 'Climate Dashboard', Icons.dashboard, 0),
-          _buildDrawerItem(context, 'Weather', Icons.wb_sunny, 1),
-          _buildDrawerItem(context, 'Weather Alerts', Icons.warning, 2),
-          _buildDrawerItem(context, 'Predictions', Icons.analytics, 3),
-          _buildDrawerItem(context, 'Recommendations', Icons.lightbulb, 4),
-          _buildDrawerItem(context, 'Irrigation Schedule', Icons.water_drop, 5),
-          _buildDrawerItem(context, 'Analytics', Icons.trending_up, 6),
-          _buildDrawerItem(context, 'Soil Data', Icons.terrain, 7),
-          _buildDrawerItem(context, 'AI Insights', Icons.psychology, 8),
-          _buildDrawerItem(context, 'Help & Support', Icons.help, 9),
+          _buildDrawerItem(context, 'Weather Alerts', Icons.warning, 1),
+          _buildDrawerItem(context, 'Predictions', Icons.analytics, 2),
+          _buildDrawerItem(context, 'Recommendations', Icons.lightbulb, 3),
+          _buildDrawerItem(context, 'Irrigation Schedule', Icons.water_drop, 4),
+          const Divider(),
+          _buildDrawerItem(context, 'Weather', Icons.wb_sunny, -1, const WeatherScreen()),
+          _buildDrawerItem(context, 'Analytics', Icons.trending_up, -1, const AnalyticsScreen()),
+          _buildDrawerItem(context, 'Soil Data', Icons.terrain, -1, const SoilDataScreen()),
+          _buildDrawerItem(context, 'AI Insights', Icons.psychology, -1, const AIInsightsScreen()),
+          _buildDrawerItem(context, 'Help & Support', Icons.help, -1, const HelpScreen()),
           const Divider(),
           ListTile(
             leading: const Icon(Icons.logout),
@@ -656,8 +696,9 @@ class _MainScreenState extends State<MainScreen> {
     BuildContext context,
     String title,
     IconData icon,
-    int index,
-  ) {
+    int index, [
+    Widget? screen,
+  ]) {
     return ListTile(
       leading: Icon(icon),
       title: Text(title),
@@ -665,9 +706,18 @@ class _MainScreenState extends State<MainScreen> {
       selectedTileColor: Theme.of(context).colorScheme.primary.withOpacity(0.1),
       onTap: () {
         Navigator.pop(context);
-        setState(() {
-          _selectedIndex = index;
-        });
+        if (index >= 0) {
+          // Bottom navigation screens
+          setState(() {
+            _selectedIndex = index;
+          });
+        } else if (screen != null) {
+          // Additional screens - navigate directly
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => screen),
+          );
+        }
       },
     );
   }
