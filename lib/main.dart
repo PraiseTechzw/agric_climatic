@@ -145,7 +145,7 @@ class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
 
   final List<Widget> _screens = [
-    const WeatherScreen(),
+    const ClimateDashboardScreen(),
     const WeatherAlertsScreen(),
     const EnhancedPredictionsScreen(),
     const RecommendationsScreen(),
@@ -263,7 +263,7 @@ class _MainScreenState extends State<MainScreen> {
                       size: 24,
                     ),
                   ),
-                  label: 'Weather',
+                  label: 'Dashboard',
                 ),
                 BottomNavigationBarItem(
                   icon: Container(
@@ -396,7 +396,7 @@ class _MainScreenState extends State<MainScreen> {
               ],
             ),
           ),
-          _buildDrawerItem(context, 'Weather Today', Icons.wb_sunny, 0),
+          _buildDrawerItem(context, 'Weather Today', Icons.wb_sunny, -1),
           _buildDrawerItem(context, 'Weather Alerts', Icons.warning, 1),
           _buildDrawerItem(context, 'Crop Predictions', Icons.analytics, 2),
           _buildDrawerItem(context, 'Farming Advice', Icons.lightbulb, 3),
@@ -455,6 +455,9 @@ class _MainScreenState extends State<MainScreen> {
     switch (screenName) {
       case 'Climate Dashboard':
         screen = const ClimateDashboardScreen();
+        break;
+      case 'Weather Today':
+        screen = const WeatherScreen();
         break;
       case 'Supervisor Dashboard':
         screen = const SupervisorDashboardScreen();

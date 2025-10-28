@@ -2,13 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter/services.dart';
+import 'dart:convert';
+import 'dart:io';
+import 'package:csv/csv.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:http/http.dart' as http;
 import '../models/weather.dart';
 import '../models/weather_pattern.dart';
-import '../models/agro_climatic_prediction.dart';
 import '../models/agricultural_recommendation.dart';
 import '../providers/weather_provider.dart';
 import '../services/historical_weather_service.dart';
-import '../widgets/modern_loading_widget.dart';
 
 class ClimateDashboardScreen extends StatefulWidget {
   const ClimateDashboardScreen({super.key});
@@ -211,14 +215,16 @@ class _ClimateDashboardScreenState extends State<ClimateDashboardScreen>
                 ],
               ),
             )
-          : TabBarView(
-              controller: _tabController,
-              children: [
-                _buildOverviewTab(),
-                _buildAnalysisTab(),
-                _buildTrendsTab(),
-                _buildRecommendationsTab(),
-              ],
+          : SafeArea(
+              child: TabBarView(
+                controller: _tabController,
+                children: [
+                  _buildOverviewTab(),
+                  _buildAnalysisTab(),
+                  _buildTrendsTab(),
+                  _buildRecommendationsTab(),
+                ],
+              ),
             ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showDataManagementDialog,
@@ -377,35 +383,49 @@ class _ClimateDashboardScreenState extends State<ClimateDashboardScreen>
           );
         }
 
-        return Row(
-          children: [
-            Expanded(
-              child: _buildSummaryCard(
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final isNarrow = constraints.maxWidth < 380;
+            final children = [
+              _buildSummaryCard(
                 'Temperature',
                 '${currentWeather.temperature.toStringAsFixed(1)}°C',
                 Icons.thermostat,
                 Colors.orange,
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildSummaryCard(
+              _buildSummaryCard(
                 'Humidity',
                 '${currentWeather.humidity.toStringAsFixed(1)}%',
                 Icons.water_drop,
                 Colors.blue,
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildSummaryCard(
+              _buildSummaryCard(
                 'Precipitation',
                 '${currentWeather.precipitation.toStringAsFixed(1)}mm',
                 Icons.cloudy_snowing,
                 Colors.cyan,
               ),
-            ),
-          ],
+            ];
+            if (isNarrow) {
+              return Column(
+                children: [
+                  for (int i = 0; i < children.length; i++) ...[
+                    children[i],
+                    if (i != children.length - 1) const SizedBox(height: 12),
+                  ],
+                ],
+              );
+            }
+            return Row(
+              children: [
+                Expanded(child: children[0]),
+                const SizedBox(width: 12),
+                Expanded(child: children[1]),
+                const SizedBox(width: 12),
+                Expanded(child: children[2]),
+              ],
+            );
+          },
         );
       },
     );
@@ -670,7 +690,7 @@ class _ClimateDashboardScreenState extends State<ClimateDashboardScreen>
             ),
             const SizedBox(height: 16),
             SizedBox(
-              height: 200,
+              height: _responsiveChartHeight(context),
               child: _historicalData.isEmpty
                   ? const Center(child: Text('No data available'))
                   : LineChart(
@@ -744,7 +764,7 @@ class _ClimateDashboardScreenState extends State<ClimateDashboardScreen>
             ),
             const SizedBox(height: 16),
             SizedBox(
-              height: 200,
+              height: _responsiveChartHeight(context),
               child: _historicalData.isEmpty
                   ? const Center(child: Text('No data available'))
                   : BarChart(
@@ -812,7 +832,7 @@ class _ClimateDashboardScreenState extends State<ClimateDashboardScreen>
             ),
             const SizedBox(height: 16),
             SizedBox(
-              height: 200,
+              height: _responsiveChartHeight(context),
               child: _historicalData.isEmpty
                   ? const Center(child: Text('No data available'))
                   : LineChart(
@@ -869,6 +889,12 @@ class _ClimateDashboardScreenState extends State<ClimateDashboardScreen>
         ),
       ),
     );
+  }
+
+  double _responsiveChartHeight(BuildContext context) {
+    final h = MediaQuery.of(context).size.height;
+    // 22% of screen height, clamped to [180, 280]
+    return (h * 0.22).clamp(180, 280).toDouble();
   }
 
   Widget _buildWeatherPatternAnalysis() {
@@ -1567,47 +1593,285 @@ class _ClimateDashboardScreenState extends State<ClimateDashboardScreen>
   }
 
   void _showEditDialog() {
+    if (_historicalData.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No weather records to edit')),
+      );
+      return;
+    }
+
+    Weather selected = _historicalData.last;
+    final tempCtrl = TextEditingController(
+      text: selected.temperature.toStringAsFixed(1),
+    );
+    final humidityCtrl = TextEditingController(
+      text: selected.humidity.toStringAsFixed(1),
+    );
+    final precipCtrl = TextEditingController(
+      text: selected.precipitation.toStringAsFixed(1),
+    );
+    final windSpeedCtrl = TextEditingController(
+      text: selected.windSpeed.toStringAsFixed(1),
+    );
+    final windDirCtrl = TextEditingController(
+      text: selected.windDirection ?? '',
+    );
+    final pressureCtrl = TextEditingController(
+      text: selected.pressure.toStringAsFixed(1),
+    );
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Edit Weather Data'),
-        content: const Text('Edit functionality will be implemented here.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
-          ),
-        ],
+      builder: (context) => StatefulBuilder(
+        builder: (context, setStateDialog) {
+          return AlertDialog(
+            title: const Text('Edit Weather Record'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  DropdownButtonFormField<Weather>(
+                    value: selected,
+                    decoration: const InputDecoration(
+                      labelText: 'Select Record',
+                    ),
+                    items: _historicalData
+                        .map(
+                          (w) => DropdownMenuItem(
+                            value: w,
+                            child: Text(
+                              DateFormat('yyyy-MM-dd HH:mm').format(w.dateTime),
+                            ),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (w) {
+                      if (w == null) return;
+                      setStateDialog(() {
+                        selected = w;
+                        tempCtrl.text = w.temperature.toStringAsFixed(1);
+                        humidityCtrl.text = w.humidity.toStringAsFixed(1);
+                        precipCtrl.text = w.precipitation.toStringAsFixed(1);
+                        windSpeedCtrl.text = w.windSpeed.toStringAsFixed(1);
+                        windDirCtrl.text = w.windDirection ?? '';
+                        pressureCtrl.text = w.pressure.toStringAsFixed(1);
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: tempCtrl,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Temperature (°C)',
+                    ),
+                  ),
+                  TextField(
+                    controller: humidityCtrl,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Humidity (%)',
+                    ),
+                  ),
+                  TextField(
+                    controller: precipCtrl,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Precipitation (mm)',
+                    ),
+                  ),
+                  TextField(
+                    controller: windSpeedCtrl,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(labelText: 'Wind Speed'),
+                  ),
+                  TextField(
+                    controller: windDirCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'Wind Direction',
+                    ),
+                  ),
+                  TextField(
+                    controller: pressureCtrl,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Pressure (hPa)',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  try {
+                    final updated = Weather(
+                      id: selected.id,
+                      dateTime: selected.dateTime,
+                      temperature: double.parse(tempCtrl.text),
+                      humidity: double.parse(humidityCtrl.text),
+                      precipitation: double.parse(precipCtrl.text),
+                      windSpeed: double.parse(windSpeedCtrl.text),
+                      windDirection: windDirCtrl.text.isEmpty
+                          ? null
+                          : windDirCtrl.text,
+                      pressure: double.parse(pressureCtrl.text),
+                      condition: selected.condition,
+                      description: selected.description,
+                      icon: selected.icon,
+                      visibility: selected.visibility,
+                      uvIndex: selected.uvIndex,
+                    );
+                    await _weatherService.updateWeatherData(updated);
+                    if (!mounted) return;
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Record updated')),
+                    );
+                    await _loadDashboardData();
+                  } catch (e) {
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Update failed: $e'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                },
+                child: const Text('Save Changes'),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
 
   void _showDeleteDialog() {
+    if (_historicalData.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No weather records to delete')),
+      );
+      return;
+    }
+
+    Weather selected = _historicalData.last;
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Weather Data'),
-        content: const Text('Delete functionality will be implemented here.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
-          ),
-        ],
+      builder: (context) => StatefulBuilder(
+        builder: (context, setStateDialog) {
+          return AlertDialog(
+            title: const Text('Delete Weather Record'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButtonFormField<Weather>(
+                  value: selected,
+                  decoration: const InputDecoration(labelText: 'Select Record'),
+                  items: _historicalData
+                      .map(
+                        (w) => DropdownMenuItem(
+                          value: w,
+                          child: Text(
+                            DateFormat('yyyy-MM-dd HH:mm').format(w.dateTime),
+                          ),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (w) {
+                    if (w == null) return;
+                    setStateDialog(() => selected = w);
+                  },
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'This will permanently remove the selected record.',
+                  style: TextStyle(color: Colors.red[700]),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton.icon(
+                icon: const Icon(Icons.delete),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                onPressed: () async {
+                  try {
+                    await _weatherService.deleteWeatherData(selected.id);
+                    if (!mounted) return;
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Record deleted')),
+                    );
+                    await _loadDashboardData();
+                  } catch (e) {
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Delete failed: $e'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                },
+                label: const Text('Delete'),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
 
   void _showExportDialog() {
+    if (_historicalData.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('No data to export')));
+      return;
+    }
+
+    final buffer = StringBuffer();
+    buffer.writeln(
+      'date_time,temperature,humidity,precipitation,wind_speed,wind_direction,pressure,condition,description,icon',
+    );
+    for (final w in _historicalData) {
+      buffer.writeln(
+        '${w.dateTime.toIso8601String()},${w.temperature.toStringAsFixed(2)},${w.humidity.toStringAsFixed(2)},${w.precipitation.toStringAsFixed(2)},${w.windSpeed.toStringAsFixed(2)},${(w.windDirection ?? '').replaceAll(',', ' ')},${w.pressure.toStringAsFixed(2)},${w.condition.replaceAll(',', ' ')},${w.description.replaceAll(',', ' ')},${w.icon.replaceAll(',', ' ')}',
+      );
+    }
+
+    final csvData = buffer.toString();
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Export Report'),
-        content: const Text('Export functionality will be implemented here.'),
+        title: const Text('Export Weather Data'),
+        content: const Text('Copy CSV to clipboard?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              await Clipboard.setData(ClipboardData(text: csvData));
+              if (!mounted) return;
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('CSV copied to clipboard')),
+              );
+            },
+            child: const Text('Copy CSV'),
           ),
         ],
       ),
@@ -1630,21 +1894,297 @@ class _ClimateDashboardScreenState extends State<ClimateDashboardScreen>
     );
   }
 
-  void _uploadFromCSV() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('CSV upload functionality coming soon')),
+  Future<void> _uploadFromCSV() async {
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['csv'],
+        allowMultiple: false,
+      );
+
+      if (result != null && result.files.single.path != null) {
+        final file = File(result.files.single.path!);
+        final csvContent = await file.readAsString();
+
+        // Parse CSV
+        final rows = const CsvToListConverter().convert(csvContent);
+
+        if (rows.length < 2) {
+          throw Exception(
+            'CSV file must have at least a header and one data row',
+          );
+        }
+
+        final List<Weather> weatherData = [];
+
+        // Skip header row and process data
+        for (int i = 1; i < rows.length; i++) {
+          final row = rows[i];
+          if (row.length < 9) continue;
+
+          try {
+            final weather = Weather(
+              id: DateTime.now().millisecondsSinceEpoch.toString() + '_$i',
+              dateTime: DateTime.parse(row[0].toString()),
+              temperature: double.parse(row[1].toString()),
+              humidity: double.parse(row[2].toString()),
+              windSpeed: double.parse(row[3].toString()),
+              pressure: double.parse(row[7].toString()),
+              precipitation: row.length > 8
+                  ? double.parse(row[8].toString())
+                  : 0.0,
+              condition: row[4].toString(),
+              description: row[5].toString(),
+              icon: row[6].toString(),
+            );
+            weatherData.add(weather);
+          } catch (e) {
+            // Skip invalid rows
+            continue;
+          }
+        }
+
+        // Store the data
+        await _weatherService.storeMultipleWeatherData(weatherData);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Successfully uploaded ${weatherData.length} weather records',
+              ),
+              backgroundColor: Colors.green,
+            ),
+          );
+
+          // Refresh the dashboard
+          _loadDashboardData();
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error uploading CSV: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _uploadFromAPI() async {
+    final apiKeyController = TextEditingController();
+    final locationController = TextEditingController(text: 'Harare');
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Import from Weather API'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: locationController,
+              decoration: const InputDecoration(
+                labelText: 'Location',
+                hintText: 'Harare, Zimbabwe',
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: apiKeyController,
+              decoration: const InputDecoration(
+                labelText: 'API Key (optional)',
+                hintText: 'OpenWeatherMap API key',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _fetchWeatherFromAPI(
+                apiKeyController.text,
+                locationController.text,
+              );
+            },
+            child: const Text('Import'),
+          ),
+        ],
+      ),
     );
   }
 
-  void _uploadFromAPI() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('API import functionality coming soon')),
-    );
+  Future<void> _fetchWeatherFromAPI(String apiKey, String location) async {
+    try {
+      final apiUrl =
+          'https://api.openweathermap.org/data/2.5/weather?q=$location&appid=$apiKey&units=metric';
+      final response = await http.get(Uri.parse(apiUrl));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+
+        final weather = Weather(
+          id: 'api_${DateTime.now().millisecondsSinceEpoch}',
+          dateTime: DateTime.now(),
+          temperature: data['main']['temp'].toDouble(),
+          humidity: data['main']['humidity'].toDouble(),
+          windSpeed: data['wind']['speed'].toDouble(),
+          pressure: data['main']['pressure'].toDouble(),
+          precipitation: data['rain']?['1h']?.toDouble() ?? 0.0,
+          condition: data['weather'][0]['main'],
+          description: data['weather'][0]['description'],
+          icon: data['weather'][0]['icon'],
+        );
+
+        await _weatherService.storeWeatherData(weather);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Successfully imported weather data from API'),
+              backgroundColor: Colors.green,
+            ),
+          );
+
+          // Refresh the dashboard
+          _loadDashboardData();
+        }
+      } else {
+        throw Exception('Failed to fetch from API: ${response.statusCode}');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error importing from API: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   void _manualEntry() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Manual entry functionality coming soon')),
+    final dateController = TextEditingController(
+      text: DateFormat('yyyy-MM-dd').format(DateTime.now()),
+    );
+    final tempController = TextEditingController();
+    final humidityController = TextEditingController();
+    final precipitationController = TextEditingController(text: '0');
+    final windSpeedController = TextEditingController();
+    final windDirectionController = TextEditingController();
+    final pressureController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Manual Weather Entry'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: dateController,
+                decoration: const InputDecoration(
+                  labelText: 'Date (YYYY-MM-DD)',
+                ),
+              ),
+              TextField(
+                controller: tempController,
+                decoration: const InputDecoration(
+                  labelText: 'Temperature (°C)',
+                ),
+                keyboardType: TextInputType.number,
+              ),
+              TextField(
+                controller: humidityController,
+                decoration: const InputDecoration(labelText: 'Humidity (%)'),
+                keyboardType: TextInputType.number,
+              ),
+              TextField(
+                controller: precipitationController,
+                decoration: const InputDecoration(
+                  labelText: 'Precipitation (mm)',
+                ),
+                keyboardType: TextInputType.number,
+              ),
+              TextField(
+                controller: windSpeedController,
+                decoration: const InputDecoration(
+                  labelText: 'Wind Speed (km/h)',
+                ),
+                keyboardType: TextInputType.number,
+              ),
+              TextField(
+                controller: windDirectionController,
+                decoration: const InputDecoration(labelText: 'Wind Direction'),
+              ),
+              TextField(
+                controller: pressureController,
+                decoration: const InputDecoration(labelText: 'Pressure (hPa)'),
+                keyboardType: TextInputType.number,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              try {
+                final weather = Weather(
+                  id: 'manual_${DateTime.now().millisecondsSinceEpoch}',
+                  dateTime: DateTime.parse(dateController.text),
+                  temperature: double.parse(tempController.text),
+                  humidity: double.parse(humidityController.text),
+                  precipitation: double.parse(precipitationController.text),
+                  windSpeed: double.parse(windSpeedController.text),
+                  windDirection: windDirectionController.text,
+                  pressure: double.parse(pressureController.text),
+                  condition: 'Manual Entry',
+                  description: 'Manually entered weather data',
+                  icon: 'manual',
+                );
+
+                await _weatherService.storeWeatherData(weather);
+
+                if (mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Weather data entered successfully'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+
+                  // Refresh the dashboard
+                  _loadDashboardData();
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Error: $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
     );
   }
 
