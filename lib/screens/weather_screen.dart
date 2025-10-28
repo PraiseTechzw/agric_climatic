@@ -1,3 +1,8 @@
+import 'package:agric_climatic/screens/analytics_screen.dart';
+import 'package:agric_climatic/screens/climate_dashboard_screen.dart';
+import 'package:agric_climatic/screens/help_screen.dart';
+import 'package:agric_climatic/screens/supervisor_dashboard_screen.dart';
+import 'package:agric_climatic/widgets/auth_status_indicator.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
@@ -5,6 +10,7 @@ import '../providers/weather_provider.dart';
 import '../widgets/location_dropdown.dart';
 import '../services/soil_data_service.dart';
 import '../models/soil_data.dart';
+import '../providers/auth_provider.dart';
 
 class WeatherScreen extends StatefulWidget {
   const WeatherScreen({super.key});
@@ -21,6 +27,7 @@ class _WeatherScreenState extends State<WeatherScreen>
   late AnimationController _cardAnimationController;
   late Animation<double> _cardSlideAnimation;
   late Animation<double> _cardFadeAnimation;
+  int _selectedIndex = 0;
 
   // Forecast filters
   String _selectedPeriod = '7 Days';
@@ -1984,24 +1991,21 @@ class _WeatherScreenState extends State<WeatherScreen>
               children: [
                 Row(
                   children: [
-                    Icon(Icons.wb_sunny, size: 48, color: Colors.white),
+                    Icon(Icons.agriculture, size: 48, color: Colors.white),
                     const Spacer(),
-                    IconButton(
-                      icon: const Icon(Icons.close, color: Colors.white),
-                      onPressed: () => Navigator.pop(context),
-                    ),
+                    const AuthStatusIndicator(),
                   ],
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Weather Station',
+                  'AgriClimatic',
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 Text(
-                  'Real-time Weather Data & Forecasts',
+                  'Agricultural Climate Prediction',
                   style: Theme.of(
                     context,
                   ).textTheme.bodyMedium?.copyWith(color: Colors.white70),
@@ -2009,40 +2013,30 @@ class _WeatherScreenState extends State<WeatherScreen>
               ],
             ),
           ),
+          _buildDrawerItem(context, 'Weather Today', Icons.wb_sunny, 0),
+          _buildDrawerItem(context, 'Weather Alerts', Icons.warning, 1),
+          _buildDrawerItem(context, 'Crop Predictions', Icons.analytics, 2),
+          _buildDrawerItem(context, 'Farming Advice', Icons.lightbulb, 3),
+          _buildDrawerItem(context, 'Water Schedule', Icons.water_drop, 4),
+          const Divider(),
+          _buildDrawerItem(context, 'Climate Dashboard', Icons.dashboard, -1),
           _buildDrawerItem(
             context,
-            'Current Weather',
-            Icons.wb_sunny,
-            () => _tabController.animateTo(0),
+            'Supervisor Dashboard',
+            Icons.admin_panel_settings,
+            -1,
           ),
-          _buildDrawerItem(
-            context,
-            'Weather Forecast',
-            Icons.timeline,
-            () => _tabController.animateTo(1),
+          _buildDrawerItem(context, 'Farm Analytics', Icons.trending_up, -1),
+          _buildDrawerItem(context, 'Help & Support', Icons.help, -1),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.logout),
+            title: const Text('Sign Out'),
+            onTap: () {
+              Navigator.pop(context);
+              _showSignOutDialog(context);
+            },
           ),
-          const Divider(),
-          _buildDrawerItem(context, 'Weather Alerts', Icons.warning, () {
-            Navigator.pop(context);
-            // Navigate to weather alerts screen
-          }),
-          _buildDrawerItem(context, 'Climate Dashboard', Icons.dashboard, () {
-            Navigator.pop(context);
-            // Navigate to climate dashboard
-          }),
-          _buildDrawerItem(context, 'Soil Data', Icons.terrain, () {
-            Navigator.pop(context);
-            // Navigate to soil data screen
-          }),
-          const Divider(),
-          _buildDrawerItem(context, 'Refresh Weather', Icons.refresh, () {
-            Navigator.pop(context);
-            _refreshWeatherData();
-          }),
-          _buildDrawerItem(context, 'Help & Support', Icons.help, () {
-            Navigator.pop(context);
-            _showHelpDialog();
-          }),
         ],
       ),
     );
@@ -2052,79 +2046,68 @@ class _WeatherScreenState extends State<WeatherScreen>
     BuildContext context,
     String title,
     IconData icon,
-    VoidCallback onTap,
+    int index,
   ) {
     return ListTile(
       leading: Icon(icon),
       title: Text(title),
-      onTap: onTap,
+      selected: _selectedIndex == index,
       selectedTileColor: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+      onTap: () {
+        Navigator.pop(context);
+        if (index >= 0) {
+          setState(() {
+            _selectedIndex = index;
+          });
+        } else {
+          // Handle navigation to screens not in bottom navigation
+          _navigateToScreen(context, title);
+        }
+      },
     );
   }
 
-  void _refreshWeatherData() {
-    final weatherProvider = context.read<WeatherProvider>();
-    weatherProvider.refreshAll();
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Weather data refreshed')));
+  void _navigateToScreen(BuildContext context, String screenName) {
+    Widget? screen;
+    switch (screenName) {
+      case 'Climate Dashboard':
+        screen = const ClimateDashboardScreen();
+        break;
+      case 'Supervisor Dashboard':
+        screen = const SupervisorDashboardScreen();
+        break;
+      case 'Farm Analytics':
+        screen = const AnalyticsScreen();
+        break;
+      case 'Help & Support':
+        screen = const HelpScreen();
+        break;
+    }
+
+    if (screen != null) {
+      Navigator.push(context, MaterialPageRoute(builder: (context) => screen!));
+    }
   }
 
-  void _showSettingsDialog() {
+  void _showSignOutDialog(BuildContext context) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Weather Settings'),
-        content: const Text(
-          'Weather settings functionality will be implemented here.',
-        ),
+        title: const Text('Sign Out'),
+        content: const Text('Are you sure you want to sign out?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
+            child: const Text('Cancel'),
           ),
-        ],
-      ),
-    );
-  }
-
-  void _showHelpDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Weather Help'),
-        content: const SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Weather Features:',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              SizedBox(height: 8),
-              Text('• View current weather conditions'),
-              Text('• Check detailed weather forecasts'),
-              Text('• Monitor weather alerts and warnings'),
-              Text('• Access soil data and conditions'),
-              Text('• Get agricultural recommendations'),
-              SizedBox(height: 16),
-              Text(
-                'How to Use:',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              SizedBox(height: 8),
-              Text('1. Switch between Current and Forecast tabs'),
-              Text('2. Use location dropdown to change area'),
-              Text('3. Tap refresh to update weather data'),
-              Text('4. Check alerts for important warnings'),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              // Sign out using AuthProvider
+              final authProvider = context.read<AuthProvider>();
+              await authProvider.signOut();
+            },
+            child: const Text('Sign Out'),
           ),
         ],
       ),
