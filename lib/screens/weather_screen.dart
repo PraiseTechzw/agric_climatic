@@ -99,6 +99,7 @@ class _WeatherScreenState extends State<WeatherScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      drawer: _buildDrawer(context),
       appBar: AppBar(
         elevation: 0,
         backgroundColor: Colors.transparent,
@@ -1959,6 +1960,174 @@ class _WeatherScreenState extends State<WeatherScreen>
               ),
             ),
       ],
+    );
+  }
+
+  Widget _buildDrawer(BuildContext context) {
+    return Drawer(
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          DrawerHeader(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Theme.of(context).colorScheme.primary,
+                  Theme.of(context).colorScheme.secondary,
+                ],
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.wb_sunny, size: 48, color: Colors.white),
+                    const Spacer(),
+                    IconButton(
+                      icon: const Icon(Icons.close, color: Colors.white),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Weather Station',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  'Real-time Weather Data & Forecasts',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(color: Colors.white70),
+                ),
+              ],
+            ),
+          ),
+          _buildDrawerItem(
+            context,
+            'Current Weather',
+            Icons.wb_sunny,
+            () => _tabController.animateTo(0),
+          ),
+          _buildDrawerItem(
+            context,
+            'Weather Forecast',
+            Icons.timeline,
+            () => _tabController.animateTo(1),
+          ),
+          const Divider(),
+          _buildDrawerItem(context, 'Weather Alerts', Icons.warning, () {
+            Navigator.pop(context);
+            // Navigate to weather alerts screen
+          }),
+          _buildDrawerItem(context, 'Climate Dashboard', Icons.dashboard, () {
+            Navigator.pop(context);
+            // Navigate to climate dashboard
+          }),
+          _buildDrawerItem(context, 'Soil Data', Icons.terrain, () {
+            Navigator.pop(context);
+            // Navigate to soil data screen
+          }),
+          const Divider(),
+          _buildDrawerItem(context, 'Refresh Weather', Icons.refresh, () {
+            Navigator.pop(context);
+            _refreshWeatherData();
+          }),
+          _buildDrawerItem(context, 'Help & Support', Icons.help, () {
+            Navigator.pop(context);
+            _showHelpDialog();
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDrawerItem(
+    BuildContext context,
+    String title,
+    IconData icon,
+    VoidCallback onTap,
+  ) {
+    return ListTile(
+      leading: Icon(icon),
+      title: Text(title),
+      onTap: onTap,
+      selectedTileColor: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+    );
+  }
+
+  void _refreshWeatherData() {
+    final weatherProvider = context.read<WeatherProvider>();
+    weatherProvider.refreshAll();
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Weather data refreshed')));
+  }
+
+  void _showSettingsDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Weather Settings'),
+        content: const Text(
+          'Weather settings functionality will be implemented here.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showHelpDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Weather Help'),
+        content: const SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Weather Features:',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 8),
+              Text('• View current weather conditions'),
+              Text('• Check detailed weather forecasts'),
+              Text('• Monitor weather alerts and warnings'),
+              Text('• Access soil data and conditions'),
+              Text('• Get agricultural recommendations'),
+              SizedBox(height: 16),
+              Text(
+                'How to Use:',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 8),
+              Text('1. Switch between Current and Forecast tabs'),
+              Text('2. Use location dropdown to change area'),
+              Text('3. Tap refresh to update weather data'),
+              Text('4. Check alerts for important warnings'),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
     );
   }
 }

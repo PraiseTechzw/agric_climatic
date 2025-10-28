@@ -1,4 +1,5 @@
 import 'package:agric_climatic/providers/agro_climatic_provider.dart';
+import 'package:agric_climatic/screens/help_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'services/firebase_config.dart';
@@ -11,17 +12,15 @@ import 'services/notification_service.dart';
 import 'widgets/auth_wrapper.dart';
 import 'widgets/auth_guard.dart';
 import 'widgets/auth_status_indicator.dart';
-import 'screens/enhanced_climate_dashboard_screen.dart';
+import 'screens/climate_dashboard_screen.dart';
 import 'screens/weather_screen.dart';
 import 'screens/weather_alerts_screen.dart';
 import 'screens/enhanced_predictions_screen.dart';
 import 'screens/recommendations_screen.dart';
 import 'screens/irrigation_schedule_screen.dart';
 import 'screens/analytics_screen.dart';
-import 'screens/soil_data_screen.dart';
 import 'screens/notifications_screen.dart';
-import 'screens/ai_insights_screen.dart';
-import 'screens/help_screen.dart';
+import 'screens/supervisor_dashboard_screen.dart';
 import 'providers/weather_provider.dart';
 import 'providers/notification_provider.dart';
 import 'providers/auth_provider.dart';
@@ -92,106 +91,21 @@ class MyApp extends StatelessWidget {
           colorScheme: ColorScheme.fromSeed(
             seedColor: const Color(0xFF2E7D32), // Rich forest green
             brightness: Brightness.light,
-            primary: const Color(0xFF2E7D32),
-            secondary: const Color(0xFF4CAF50),
-            tertiary: const Color(0xFF81C784),
-            surface: const Color(0xFFFAFAFA),
-            surfaceContainerHighest: const Color(0xFFF5F5F5),
-            outline: const Color(0xFFE0E0E0),
-            outlineVariant: const Color(0xFFF0F0F0),
           ),
           useMaterial3: true,
-          fontFamily: 'Inter',
-          textTheme: const TextTheme(
-            displayLarge: TextStyle(
-              fontSize: 32,
-              fontWeight: FontWeight.w700,
-              letterSpacing: -0.5,
-            ),
-            displayMedium: TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.w600,
-              letterSpacing: -0.25,
-            ),
-            displaySmall: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w600,
-            ),
-            headlineLarge: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w600,
-            ),
-            headlineMedium: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
-            ),
-            headlineSmall: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-            ),
-            titleLarge: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-            ),
-            titleMedium: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-            ),
-            titleSmall: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-            ),
-            bodyLarge: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w400,
-            ),
-            bodyMedium: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w400,
-            ),
-            bodySmall: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w400,
-            ),
-            labelLarge: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-            ),
-            labelMedium: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-            ),
-            labelSmall: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          appBarTheme: AppBarTheme(
+          appBarTheme: const AppBarTheme(
             centerTitle: true,
             elevation: 0,
             scrolledUnderElevation: 0,
             surfaceTintColor: Colors.transparent,
-            backgroundColor: Colors.transparent,
-            foregroundColor: const Color(0xFF2E7D32),
-            titleTextStyle: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF2E7D32),
-            ),
-            iconTheme: const IconThemeData(
-              color: Color(0xFF2E7D32),
-              size: 24,
-            ),
           ),
           cardTheme: CardThemeData(
             elevation: 0,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(20),
             ),
             surfaceTintColor: Colors.transparent,
-            shadowColor: Colors.black.withOpacity(0.08),
-            color: Colors.white,
-            margin: const EdgeInsets.all(8),
+            shadowColor: Colors.black.withOpacity(0.1),
           ),
           elevatedButtonTheme: ElevatedButtonThemeData(
             style: ElevatedButton.styleFrom(
@@ -201,130 +115,16 @@ class MyApp extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
               elevation: 0,
               shadowColor: Colors.transparent,
-              backgroundColor: const Color(0xFF2E7D32),
-              foregroundColor: Colors.white,
-              textStyle: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          filledButtonTheme: FilledButtonThemeData(
-            style: FilledButton.styleFrom(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              backgroundColor: const Color(0xFF2E7D32),
-              foregroundColor: Colors.white,
-              textStyle: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          outlinedButtonTheme: OutlinedButtonThemeData(
-            style: OutlinedButton.styleFrom(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              side: const BorderSide(color: Color(0xFF2E7D32), width: 1.5),
-              foregroundColor: const Color(0xFF2E7D32),
-              textStyle: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          textButtonTheme: TextButtonThemeData(
-            style: TextButton.styleFrom(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              foregroundColor: const Color(0xFF2E7D32),
-              textStyle: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-              ),
             ),
           ),
           floatingActionButtonTheme: const FloatingActionButtonThemeData(
             shape: CircleBorder(),
             elevation: 8,
-            backgroundColor: Color(0xFF2E7D32),
-            foregroundColor: Colors.white,
           ),
           bottomNavigationBarTheme: const BottomNavigationBarThemeData(
             elevation: 0,
             type: BottomNavigationBarType.fixed,
             backgroundColor: Colors.transparent,
-            selectedItemColor: Color(0xFF2E7D32),
-            unselectedItemColor: Color(0xFF9E9E9E),
-            selectedLabelStyle: TextStyle(
-              fontWeight: FontWeight.w600,
-              fontSize: 12,
-            ),
-            unselectedLabelStyle: TextStyle(
-              fontWeight: FontWeight.w500,
-              fontSize: 12,
-            ),
-          ),
-          inputDecorationTheme: InputDecorationTheme(
-            filled: true,
-            fillColor: const Color(0xFFF8F9FA),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: const BorderSide(color: Color(0xFF2E7D32), width: 2),
-            ),
-            errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: const BorderSide(color: Color(0xFFE53E3E)),
-            ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-            labelStyle: const TextStyle(
-              color: Color(0xFF6B7280),
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-            ),
-            hintStyle: const TextStyle(
-              color: Color(0xFF9CA3AF),
-              fontSize: 14,
-            ),
-          ),
-          chipTheme: ChipThemeData(
-            backgroundColor: const Color(0xFFF3F4F6),
-            selectedColor: const Color(0xFF2E7D32),
-            labelStyle: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-            ),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            side: const BorderSide(color: Color(0xFFE5E7EB)),
-          ),
-          dividerTheme: const DividerThemeData(
-            color: Color(0xFFE5E7EB),
-            thickness: 1,
-            space: 1,
-          ),
-          listTileTheme: const ListTileThemeData(
-            contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.all(Radius.circular(12)),
-            ),
-            tileColor: Colors.transparent,
-            selectedTileColor: Color(0xFFE8F5E8),
           ),
         ),
         home: const AuthWrapper(),
@@ -345,11 +145,11 @@ class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
 
   final List<Widget> _screens = [
-    const EnhancedClimateDashboardScreen(), // 0 - Dashboard
-    const WeatherAlertsScreen(),           // 1 - Alerts  
-    const EnhancedPredictionsScreen(),     // 2 - Predictions
-    const RecommendationsScreen(),         // 3 - Recommendations
-    const IrrigationScheduleScreen(),      // 4 - Irrigation
+    const WeatherScreen(),
+    const WeatherAlertsScreen(),
+    const EnhancedPredictionsScreen(),
+    const RecommendationsScreen(),
+    const IrrigationScheduleScreen(),
   ];
 
   @override
@@ -412,34 +212,18 @@ class _MainScreenState extends State<MainScreen> {
         bottomNavigationBar: Container(
           margin: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Colors.white.withOpacity(0.95),
-                Colors.white.withOpacity(0.9),
-              ],
-            ),
-            borderRadius: BorderRadius.circular(28),
-            border: Border.all(
-              color: const Color(0xFF2E7D32).withOpacity(0.1),
-              width: 1,
-            ),
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(25),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF2E7D32).withOpacity(0.1),
+                color: Colors.black.withOpacity(0.1),
                 blurRadius: 20,
-                offset: const Offset(0, 8),
-              ),
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
+                offset: const Offset(0, 10),
               ),
             ],
           ),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(28),
+            borderRadius: BorderRadius.circular(25),
             child: BottomNavigationBar(
               currentIndex: _selectedIndex,
               onTap: (index) {
@@ -449,8 +233,8 @@ class _MainScreenState extends State<MainScreen> {
               },
               type: BottomNavigationBarType.fixed,
               backgroundColor: Colors.transparent,
-              selectedItemColor: const Color(0xFF2E7D32),
-              unselectedItemColor: const Color(0xFF9CA3AF),
+              selectedItemColor: Theme.of(context).colorScheme.primary,
+              unselectedItemColor: Colors.grey[500],
               selectedLabelStyle: const TextStyle(
                 fontWeight: FontWeight.w600,
                 fontSize: 12,
@@ -463,56 +247,34 @@ class _MainScreenState extends State<MainScreen> {
               items: [
                 BottomNavigationBarItem(
                   icon: Container(
-                    padding: const EdgeInsets.all(10),
+                    padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      gradient: _selectedIndex == 0
-                          ? LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [
-                                const Color(0xFF2E7D32).withOpacity(0.2),
-                                const Color(0xFF4CAF50).withOpacity(0.1),
-                              ],
-                            )
-                          : null,
-                      borderRadius: BorderRadius.circular(16),
-                      border: _selectedIndex == 0
-                          ? Border.all(
-                              color: const Color(0xFF2E7D32).withOpacity(0.3),
-                              width: 1,
-                            )
-                          : null,
+                      color: _selectedIndex == 0
+                          ? Theme.of(
+                              context,
+                            ).colorScheme.primary.withOpacity(0.1)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
                       _selectedIndex == 0
-                          ? Icons.dashboard
-                          : Icons.dashboard_outlined,
+                          ? Icons.wb_sunny
+                          : Icons.wb_sunny_outlined,
                       size: 24,
                     ),
                   ),
-                  label: 'Dashboard',
+                  label: 'Weather',
                 ),
                 BottomNavigationBarItem(
                   icon: Container(
-                    padding: const EdgeInsets.all(10),
+                    padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      gradient: _selectedIndex == 1
-                          ? LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [
-                                const Color(0xFFE53E3E).withOpacity(0.2),
-                                const Color(0xFFF56565).withOpacity(0.1),
-                              ],
-                            )
-                          : null,
-                      borderRadius: BorderRadius.circular(16),
-                      border: _selectedIndex == 1
-                          ? Border.all(
-                              color: const Color(0xFFE53E3E).withOpacity(0.3),
-                              width: 1,
-                            )
-                          : null,
+                      color: _selectedIndex == 1
+                          ? Theme.of(
+                              context,
+                            ).colorScheme.primary.withOpacity(0.1)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
                       _selectedIndex == 1
@@ -525,25 +287,14 @@ class _MainScreenState extends State<MainScreen> {
                 ),
                 BottomNavigationBarItem(
                   icon: Container(
-                    padding: const EdgeInsets.all(10),
+                    padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      gradient: _selectedIndex == 2
-                          ? LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [
-                                const Color(0xFF3182CE).withOpacity(0.2),
-                                const Color(0xFF63B3ED).withOpacity(0.1),
-                              ],
-                            )
-                          : null,
-                      borderRadius: BorderRadius.circular(16),
-                      border: _selectedIndex == 2
-                          ? Border.all(
-                              color: const Color(0xFF3182CE).withOpacity(0.3),
-                              width: 1,
-                            )
-                          : null,
+                      color: _selectedIndex == 2
+                          ? Theme.of(
+                              context,
+                            ).colorScheme.primary.withOpacity(0.1)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
                       _selectedIndex == 2
@@ -556,25 +307,14 @@ class _MainScreenState extends State<MainScreen> {
                 ),
                 BottomNavigationBarItem(
                   icon: Container(
-                    padding: const EdgeInsets.all(10),
+                    padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      gradient: _selectedIndex == 3
-                          ? LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [
-                                const Color(0xFFD69E2E).withOpacity(0.2),
-                                const Color(0xFFF6E05E).withOpacity(0.1),
-                              ],
-                            )
-                          : null,
-                      borderRadius: BorderRadius.circular(16),
-                      border: _selectedIndex == 3
-                          ? Border.all(
-                              color: const Color(0xFFD69E2E).withOpacity(0.3),
-                              width: 1,
-                            )
-                          : null,
+                      color: _selectedIndex == 3
+                          ? Theme.of(
+                              context,
+                            ).colorScheme.primary.withOpacity(0.1)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
                       _selectedIndex == 3
@@ -583,29 +323,18 @@ class _MainScreenState extends State<MainScreen> {
                       size: 24,
                     ),
                   ),
-                  label: 'Recommendations',
+                  label: 'Advice',
                 ),
                 BottomNavigationBarItem(
                   icon: Container(
-                    padding: const EdgeInsets.all(10),
+                    padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      gradient: _selectedIndex == 4
-                          ? LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [
-                                const Color(0xFF3182CE).withOpacity(0.2),
-                                const Color(0xFF63B3ED).withOpacity(0.1),
-                              ],
-                            )
-                          : null,
-                      borderRadius: BorderRadius.circular(16),
-                      border: _selectedIndex == 4
-                          ? Border.all(
-                              color: const Color(0xFF3182CE).withOpacity(0.3),
-                              width: 1,
-                            )
-                          : null,
+                      color: _selectedIndex == 4
+                          ? Theme.of(
+                              context,
+                            ).colorScheme.primary.withOpacity(0.1)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
                       _selectedIndex == 4
@@ -614,7 +343,7 @@ class _MainScreenState extends State<MainScreen> {
                       size: 24,
                     ),
                   ),
-                  label: 'Irrigation',
+                  label: 'Water',
                 ),
               ],
             ),
@@ -667,17 +396,21 @@ class _MainScreenState extends State<MainScreen> {
               ],
             ),
           ),
-          _buildDrawerItem(context, 'Climate Dashboard', Icons.dashboard, 0),
+          _buildDrawerItem(context, 'Weather Today', Icons.wb_sunny, 0),
           _buildDrawerItem(context, 'Weather Alerts', Icons.warning, 1),
-          _buildDrawerItem(context, 'Predictions', Icons.analytics, 2),
-          _buildDrawerItem(context, 'Recommendations', Icons.lightbulb, 3),
-          _buildDrawerItem(context, 'Irrigation Schedule', Icons.water_drop, 4),
+          _buildDrawerItem(context, 'Crop Predictions', Icons.analytics, 2),
+          _buildDrawerItem(context, 'Farming Advice', Icons.lightbulb, 3),
+          _buildDrawerItem(context, 'Water Schedule', Icons.water_drop, 4),
           const Divider(),
-          _buildDrawerItem(context, 'Weather', Icons.wb_sunny, -1, const WeatherScreen()),
-          _buildDrawerItem(context, 'Analytics', Icons.trending_up, -1, const AnalyticsScreen()),
-          _buildDrawerItem(context, 'Soil Data', Icons.terrain, -1, const SoilDataScreen()),
-          _buildDrawerItem(context, 'AI Insights', Icons.psychology, -1, const AIInsightsScreen()),
-          _buildDrawerItem(context, 'Help & Support', Icons.help, -1, const HelpScreen()),
+          _buildDrawerItem(context, 'Climate Dashboard', Icons.dashboard, -1),
+          _buildDrawerItem(
+            context,
+            'Supervisor Dashboard',
+            Icons.admin_panel_settings,
+            -1,
+          ),
+          _buildDrawerItem(context, 'Farm Analytics', Icons.trending_up, -1),
+          _buildDrawerItem(context, 'Help & Support', Icons.help, -1),
           const Divider(),
           ListTile(
             leading: const Icon(Icons.logout),
@@ -696,9 +429,8 @@ class _MainScreenState extends State<MainScreen> {
     BuildContext context,
     String title,
     IconData icon,
-    int index, [
-    Widget? screen,
-  ]) {
+    int index,
+  ) {
     return ListTile(
       leading: Icon(icon),
       title: Text(title),
@@ -707,19 +439,37 @@ class _MainScreenState extends State<MainScreen> {
       onTap: () {
         Navigator.pop(context);
         if (index >= 0) {
-          // Bottom navigation screens
           setState(() {
             _selectedIndex = index;
           });
-        } else if (screen != null) {
-          // Additional screens - navigate directly
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => screen),
-          );
+        } else {
+          // Handle navigation to screens not in bottom navigation
+          _navigateToScreen(context, title);
         }
       },
     );
+  }
+
+  void _navigateToScreen(BuildContext context, String screenName) {
+    Widget? screen;
+    switch (screenName) {
+      case 'Climate Dashboard':
+        screen = const ClimateDashboardScreen();
+        break;
+      case 'Supervisor Dashboard':
+        screen = const SupervisorDashboardScreen();
+        break;
+      case 'Farm Analytics':
+        screen = const AnalyticsScreen();
+        break;
+      case 'Help & Support':
+        screen = const HelpScreen();
+        break;
+    }
+
+    if (screen != null) {
+      Navigator.push(context, MaterialPageRoute(builder: (context) => screen!));
+    }
   }
 
   void _showSignOutDialog(BuildContext context) {
