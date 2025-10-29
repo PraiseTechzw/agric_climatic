@@ -54,34 +54,50 @@ class _ClimateDashboardScreenState extends State<ClimateDashboardScreen>
   }
 
   Future<void> _loadDashboardData() async {
-    print('Loading dashboard data...');
+    print('🔄 Loading dashboard data...');
     if (!mounted) return;
 
     setState(() => _isLoading = true);
     try {
       await _loadHistoricalData();
-      print('Historical data loaded: ${_historicalData.length} records');
+      print('✅ Historical data loaded: ${_historicalData.length} records');
 
       await _loadWeatherPatterns();
-      print('Weather patterns loaded: ${_weatherPatterns.length} patterns');
+      print('✅ Weather patterns loaded: ${_weatherPatterns.length} patterns');
 
       await _loadRecommendations();
       print(
-        'Recommendations loaded: ${_recommendations.length} recommendations',
+        '✅ Recommendations loaded: ${_recommendations.length} recommendations',
       );
 
       await _loadClimateStatistics();
-      print('Climate statistics loaded');
+      print('✅ Climate statistics loaded');
 
       if (mounted) {
         setState(() {
           _isLoading = false;
         });
+
+        // Force rebuild all tabs
+        print('🔄 Forcing UI rebuild for all tabs...');
+
+        // Trigger another setState to ensure charts rebuild
+        Future.microtask(() {
+          if (mounted) {
+            setState(() {
+              // This forces a complete rebuild of all child widgets
+            });
+            print('🎨 Charts forced to rebuild');
+          }
+        });
       }
 
-      print('Dashboard data loaded successfully!');
+      print('🎉 Dashboard data loaded successfully!');
+      print(
+        '📊 Summary: ${_historicalData.length} records, ${_weatherPatterns.length} patterns, ${_recommendations.length} recommendations',
+      );
     } catch (e) {
-      print('Error loading dashboard data: $e');
+      print('❌ Error loading dashboard data: $e');
       if (mounted) {
         setState(() => _isLoading = false);
         _showErrorSnackBar('Failed to load dashboard data: $e');
@@ -337,6 +353,9 @@ class _ClimateDashboardScreenState extends State<ClimateDashboardScreen>
 
   Widget _buildOverviewTab() {
     return SingleChildScrollView(
+      key: ValueKey(
+        'overview_${_historicalData.length}_${DateTime.now().millisecondsSinceEpoch}',
+      ),
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -349,6 +368,10 @@ class _ClimateDashboardScreenState extends State<ClimateDashboardScreen>
           const SizedBox(height: 20),
           _buildWeatherSummaryCards(),
           const SizedBox(height: 20),
+          if (_historicalData.isNotEmpty) ...[
+            _buildDataInfoBanner(),
+            const SizedBox(height: 20),
+          ],
           _buildQuickStatsGrid(),
           const SizedBox(height: 20),
           _buildRecentPatternsCard(),
@@ -532,11 +555,16 @@ class _ClimateDashboardScreenState extends State<ClimateDashboardScreen>
 
   Widget _buildAnalysisTab() {
     return SingleChildScrollView(
+      key: ValueKey(
+        'analysis_${_historicalData.length}_${DateTime.now().millisecondsSinceEpoch}',
+      ),
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildAnalysisHeader(),
+          const SizedBox(height: 20),
+          _buildDataInfoBanner(),
           const SizedBox(height: 20),
           _buildTemperatureChart(),
           const SizedBox(height: 20),
@@ -552,11 +580,16 @@ class _ClimateDashboardScreenState extends State<ClimateDashboardScreen>
 
   Widget _buildTrendsTab() {
     return SingleChildScrollView(
+      key: ValueKey(
+        'trends_${_historicalData.length}_${DateTime.now().millisecondsSinceEpoch}',
+      ),
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildTrendsHeader(),
+          const SizedBox(height: 20),
+          _buildDataInfoBanner(),
           const SizedBox(height: 20),
           _buildHistoricalComparisonChart(),
           const SizedBox(height: 20),
@@ -1371,6 +1404,197 @@ class _ClimateDashboardScreenState extends State<ClimateDashboardScreen>
     );
   }
 
+  Widget _buildDataInfoBanner() {
+    if (_historicalData.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.orange.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.orange.withOpacity(0.3)),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.info_outline, color: Colors.orange, size: 24),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'No Data Loaded',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Upload CSV data or change time range to see charts',
+                    style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Calculate comparison data
+    final avgTemp =
+        _historicalData.map((w) => w.temperature).reduce((a, b) => a + b) /
+        _historicalData.length;
+    final maxTemp = _historicalData
+        .map((w) => w.temperature)
+        .reduce((a, b) => a > b ? a : b);
+    final minTemp = _historicalData
+        .map((w) => w.temperature)
+        .reduce((a, b) => a < b ? a : b);
+    final totalRain = _historicalData
+        .map((w) => w.precipitation)
+        .reduce((a, b) => a + b);
+    final avgHumidity =
+        _historicalData.map((w) => w.humidity).reduce((a, b) => a + b) /
+        _historicalData.length;
+
+    final firstDate = _historicalData.first.dateTime;
+    final lastDate = _historicalData.last.dateTime;
+    final daysDiff = lastDate.difference(firstDate).inDays + 1;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.blue.withOpacity(0.1), Colors.green.withOpacity(0.1)],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.blue.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.analytics,
+                  color: Colors.blue,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Data Overview',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    Text(
+                      '${_historicalData.length} records • $daysDiff days',
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    ),
+                  ],
+                ),
+              ),
+              Text(
+                '${DateFormat('MMM d').format(firstDate)} - ${DateFormat('MMM d').format(lastDate)}',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Colors.grey[700],
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: _buildInfoMetric(
+                  '${avgTemp.toStringAsFixed(1)}°C',
+                  'Avg Temp',
+                  Icons.thermostat,
+                  Colors.orange,
+                  subtitle:
+                      '${minTemp.toStringAsFixed(1)}° - ${maxTemp.toStringAsFixed(1)}°',
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildInfoMetric(
+                  '${avgHumidity.toStringAsFixed(0)}%',
+                  'Avg Humidity',
+                  Icons.water_drop,
+                  Colors.blue,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildInfoMetric(
+                  '${totalRain.toStringAsFixed(1)}mm',
+                  'Total Rain',
+                  Icons.cloudy_snowing,
+                  Colors.cyan,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoMetric(
+    String value,
+    String label,
+    IconData icon,
+    Color color, {
+    String? subtitle,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: 18),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+              color: color,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+            textAlign: TextAlign.center,
+          ),
+          if (subtitle != null) ...[
+            const SizedBox(height: 2),
+            Text(
+              subtitle,
+              style: TextStyle(fontSize: 9, color: Colors.grey[500]),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   Widget _buildAnalysisHeader() {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -1429,6 +1653,9 @@ class _ClimateDashboardScreenState extends State<ClimateDashboardScreen>
 
   Widget _buildTemperatureChart() {
     return Container(
+      key: ValueKey(
+        'temp_chart_${_historicalData.length}_${_historicalData.isEmpty ? 0 : _historicalData.first.temperature}',
+      ),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(20),
@@ -1524,6 +1751,9 @@ class _ClimateDashboardScreenState extends State<ClimateDashboardScreen>
 
   Widget _buildHumidityChart() {
     return Container(
+      key: ValueKey(
+        'humidity_chart_${_historicalData.length}_${_historicalData.isEmpty ? 0 : _historicalData.first.humidity}',
+      ),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(20),
@@ -1613,6 +1843,9 @@ class _ClimateDashboardScreenState extends State<ClimateDashboardScreen>
 
   Widget _buildPrecipitationChart() {
     return Container(
+      key: ValueKey(
+        'precip_chart_${_historicalData.length}_${_historicalData.isEmpty ? 0 : _historicalData.first.precipitation}',
+      ),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(20),
@@ -1873,39 +2106,181 @@ class _ClimateDashboardScreenState extends State<ClimateDashboardScreen>
   }
 
   Widget _buildHistoricalComparisonChart() {
+    if (_historicalData.isEmpty) {
+      return Card(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            children: [
+              Icon(Icons.show_chart, size: 64, color: Colors.grey[300]),
+              const SizedBox(height: 16),
+              Text(
+                'No Historical Data',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey[600],
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Upload CSV data to see trends over time',
+                style: TextStyle(fontSize: 13, color: Colors.grey[500]),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Group data by day and calculate averages
+    final dataByDay = <String, List<Weather>>{};
+    for (final weather in _historicalData) {
+      final dateKey = DateFormat('MMM dd').format(weather.dateTime);
+      dataByDay.putIfAbsent(dateKey, () => []).add(weather);
+    }
+
+    // Create temperature spots
+    final tempSpots = <FlSpot>[];
+    final humiditySpots = <FlSpot>[];
+    final precipSpots = <FlSpot>[];
+    final dateLabels = <int, String>{};
+
+    var index = 0;
+    final sortedDates = dataByDay.keys.toList()
+      ..sort((a, b) {
+        final dateA = dataByDay[a]!.first.dateTime;
+        final dateB = dataByDay[b]!.first.dateTime;
+        return dateA.compareTo(dateB);
+      });
+
+    for (final dateKey in sortedDates) {
+      final dayData = dataByDay[dateKey]!;
+      final avgTemp =
+          dayData.map((w) => w.temperature).reduce((a, b) => a + b) /
+          dayData.length;
+      final avgHumidity =
+          dayData.map((w) => w.humidity).reduce((a, b) => a + b) /
+          dayData.length;
+      final totalPrecip = dayData
+          .map((w) => w.precipitation)
+          .reduce((a, b) => a + b);
+
+      tempSpots.add(FlSpot(index.toDouble(), avgTemp));
+      humiditySpots.add(FlSpot(index.toDouble(), avgHumidity));
+      precipSpots.add(FlSpot(index.toDouble(), totalPrecip));
+
+      // Add label every few days to avoid crowding
+      if (index %
+              (sortedDates.length > 10 ? (sortedDates.length / 7).ceil() : 1) ==
+          0) {
+        dateLabels[index] = dateKey.split(' ')[1]; // Just show day number
+      }
+      index++;
+    }
+
+    // Calculate min/max for better scaling
+    final allTemps = tempSpots.map((s) => s.y).toList();
+    final minTemp = allTemps.reduce((a, b) => a < b ? a : b);
+    final maxTemp = allTemps.reduce((a, b) => a > b ? a : b);
+
     return Card(
+      key: ValueKey(
+        'hist_comparison_${_historicalData.length}_${_selectedYear}',
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Temperature Trends',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '${sortedDates.length} days',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.blue[700],
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
             Text(
-              'Historical Comparison',
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+              'Average daily temperatures over time',
+              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
             ),
             const SizedBox(height: 16),
             SizedBox(
               height: 250,
               child: LineChart(
                 LineChartData(
-                  gridData: const FlGridData(show: true),
+                  gridData: FlGridData(
+                    show: true,
+                    drawVerticalLine: true,
+                    horizontalInterval: 5,
+                    getDrawingHorizontalLine: (value) {
+                      return FlLine(
+                        color: Colors.grey.withOpacity(0.2),
+                        strokeWidth: 1,
+                      );
+                    },
+                  ),
                   titlesData: FlTitlesData(
                     leftTitles: AxisTitles(
                       sideTitles: SideTitles(
                         showTitles: true,
-                        reservedSize: 40,
+                        reservedSize: 45,
+                        interval: 5,
                         getTitlesWidget: (value, meta) {
-                          return Text('${value.toInt()}°C');
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: Text(
+                              '${value.toInt()}°C',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          );
                         },
                       ),
                     ),
                     bottomTitles: AxisTitles(
                       sideTitles: SideTitles(
                         showTitles: true,
+                        reservedSize: 30,
                         getTitlesWidget: (value, meta) {
-                          return Text('${value.toInt()}');
+                          final label = dateLabels[value.toInt()];
+                          if (label == null) return const SizedBox.shrink();
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 8),
+                            child: Text(
+                              label,
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          );
                         },
                       ),
                     ),
@@ -1916,28 +2291,96 @@ class _ClimateDashboardScreenState extends State<ClimateDashboardScreen>
                       sideTitles: SideTitles(showTitles: false),
                     ),
                   ),
-                  borderData: FlBorderData(show: true),
+                  borderData: FlBorderData(
+                    show: true,
+                    border: Border.all(color: Colors.grey.withOpacity(0.3)),
+                  ),
+                  minY: (minTemp - 2).floorToDouble(),
+                  maxY: (maxTemp + 2).ceilToDouble(),
                   lineBarsData: [
                     LineChartBarData(
-                      spots: [
-                        const FlSpot(2020, 26.5),
-                        const FlSpot(2021, 27.2),
-                        const FlSpot(2022, 28.1),
-                        const FlSpot(2023, 28.8),
-                        const FlSpot(2024, 29.2),
-                      ],
+                      spots: tempSpots,
                       isCurved: true,
-                      color: Colors.blue,
+                      curveSmoothness: 0.3,
+                      color: Colors.orange,
                       barWidth: 3,
-                      dotData: const FlDotData(show: true),
+                      dotData: FlDotData(
+                        show: tempSpots.length <= 15,
+                        getDotPainter: (spot, percent, barData, index) {
+                          return FlDotCirclePainter(
+                            radius: 3,
+                            color: Colors.orange,
+                            strokeWidth: 2,
+                            strokeColor: Colors.white,
+                          );
+                        },
+                      ),
                       belowBarData: BarAreaData(
                         show: true,
-                        color: Colors.blue.withOpacity(0.1),
+                        gradient: LinearGradient(
+                          colors: [
+                            Colors.orange.withOpacity(0.3),
+                            Colors.orange.withOpacity(0.05),
+                          ],
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                        ),
                       ),
                     ),
                   ],
+                  lineTouchData: LineTouchData(
+                    enabled: true,
+                    touchTooltipData: LineTouchTooltipData(
+                      getTooltipColor: (touchedSpot) =>
+                          Colors.blueGrey.withOpacity(0.9),
+                      getTooltipItems: (touchedSpots) {
+                        return touchedSpots.map((spot) {
+                          final dateKey = sortedDates[spot.x.toInt()];
+                          return LineTooltipItem(
+                            '$dateKey\n${spot.y.toStringAsFixed(1)}°C',
+                            const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          );
+                        }).toList();
+                      },
+                    ),
+                  ),
                 ),
               ),
+            ),
+            const SizedBox(height: 16),
+            // Summary stats
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildTrendStat(
+                  'Avg',
+                  '${(allTemps.reduce((a, b) => a + b) / allTemps.length).toStringAsFixed(1)}°C',
+                  Icons.thermostat,
+                  Colors.blue,
+                ),
+                _buildTrendStat(
+                  'Min',
+                  '${minTemp.toStringAsFixed(1)}°C',
+                  Icons.arrow_downward,
+                  Colors.cyan,
+                ),
+                _buildTrendStat(
+                  'Max',
+                  '${maxTemp.toStringAsFixed(1)}°C',
+                  Icons.arrow_upward,
+                  Colors.orange,
+                ),
+                _buildTrendStat(
+                  'Range',
+                  '${(maxTemp - minTemp).toStringAsFixed(1)}°C',
+                  Icons.height,
+                  Colors.purple,
+                ),
+              ],
             ),
           ],
         ),
@@ -1945,59 +2388,185 @@ class _ClimateDashboardScreenState extends State<ClimateDashboardScreen>
     );
   }
 
+  Widget _buildTrendStat(
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
+    return Column(
+      children: [
+        Icon(icon, size: 16, color: color),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 13,
+            color: color,
+          ),
+        ),
+        Text(label, style: TextStyle(fontSize: 10, color: Colors.grey[600])),
+      ],
+    );
+  }
+
   Widget _buildSeasonalTrendsCard() {
+    if (_historicalData.isEmpty) {
+      return Card(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            children: [
+              Icon(Icons.calendar_month, size: 64, color: Colors.grey[300]),
+              const SizedBox(height: 16),
+              Text(
+                'No Seasonal Data',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey[600],
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Upload CSV data to see seasonal patterns',
+                style: TextStyle(fontSize: 13, color: Colors.grey[500]),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Group data by month
+    final dataByMonth = <String, List<Weather>>{};
+    for (final weather in _historicalData) {
+      final monthKey = DateFormat('MMM yyyy').format(weather.dateTime);
+      dataByMonth.putIfAbsent(monthKey, () => []).add(weather);
+    }
+
+    // Calculate stats for each month
+    final monthlyStats = <String, Map<String, dynamic>>{};
+    dataByMonth.forEach((month, data) {
+      final avgTemp =
+          data.map((w) => w.temperature).reduce((a, b) => a + b) / data.length;
+      final totalRain = data
+          .map((w) => w.precipitation)
+          .reduce((a, b) => a + b);
+      final avgHumidity =
+          data.map((w) => w.humidity).reduce((a, b) => a + b) / data.length;
+
+      monthlyStats[month] = {
+        'avgTemp': avgTemp,
+        'totalRain': totalRain,
+        'avgHumidity': avgHumidity,
+        'count': data.length,
+      };
+    });
+
+    // Sort months chronologically
+    final sortedMonths = monthlyStats.keys.toList()
+      ..sort((a, b) {
+        final dateA = dataByMonth[a]!.first.dateTime;
+        final dateB = dataByMonth[b]!.first.dateTime;
+        return dateA.compareTo(dateB);
+      });
+
     return Card(
+      key: ValueKey(
+        'seasonal_trends_${_historicalData.length}_${_selectedTimeRange}',
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Monthly Breakdown',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '${sortedMonths.length} ${sortedMonths.length == 1 ? 'month' : 'months'}',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.green[700],
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
             Text(
-              'Seasonal Trends',
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+              'Weather statistics by month from your uploaded data',
+              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
             ),
             const SizedBox(height: 16),
-            _buildSeasonalItem(
-              'Spring',
-              '22-28°C',
-              'Moderate rainfall',
-              Colors.green,
-            ),
-            const SizedBox(height: 12),
-            _buildSeasonalItem(
-              'Summer',
-              '28-35°C',
-              'Low rainfall',
-              Colors.orange,
-            ),
-            const SizedBox(height: 12),
-            _buildSeasonalItem(
-              'Autumn',
-              '20-26°C',
-              'Variable rainfall',
-              Colors.brown,
-            ),
-            const SizedBox(height: 12),
-            _buildSeasonalItem(
-              'Winter',
-              '15-22°C',
-              'Minimal rainfall',
-              Colors.blue,
-            ),
+            ...sortedMonths.map((month) {
+              final stats = monthlyStats[month]!;
+              final monthDate = dataByMonth[month]!.first.dateTime;
+              final season = _getSeasonForMonth(monthDate.month);
+              final color = _getSeasonColor(season);
+
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _buildSeasonalItem(
+                  month,
+                  '${stats['avgTemp'].toStringAsFixed(1)}°C avg',
+                  '${stats['totalRain'].toStringAsFixed(1)}mm rain • ${stats['avgHumidity'].toStringAsFixed(0)}% humidity',
+                  color,
+                  season: season,
+                  recordCount: stats['count'] as int,
+                ),
+              );
+            }),
           ],
         ),
       ),
     );
   }
 
+  String _getSeasonForMonth(int month) {
+    // Zimbabwe seasons
+    if (month >= 11 || month <= 3) return 'Wet Season';
+    return 'Dry Season';
+  }
+
+  Color _getSeasonColor(String season) {
+    switch (season) {
+      case 'Wet Season':
+        return Colors.blue;
+      case 'Dry Season':
+        return Colors.orange;
+      default:
+        return Colors.grey;
+    }
+  }
+
   Widget _buildSeasonalItem(
-    String season,
+    String monthOrPeriod,
     String tempRange,
     String rainfall,
-    Color color,
-  ) {
+    Color color, {
+    String? season,
+    int? recordCount,
+  }) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -2008,22 +2577,81 @@ class _ClimateDashboardScreenState extends State<ClimateDashboardScreen>
       child: Row(
         children: [
           Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              season == 'Wet Season' ? Icons.water_drop : Icons.wb_sunny,
+              color: color,
+              size: 20,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  season,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            monthOrPeriod,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                          if (season != null)
+                            Text(
+                              season,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: color,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    if (recordCount != null)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: color.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          '$recordCount records',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: color,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
+                const SizedBox(height: 6),
                 Text(
-                  '$tempRange • $rainfall',
-                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                  tempRange,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[700],
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  rainfall,
+                  style: TextStyle(color: Colors.grey[600], fontSize: 11),
                 ),
               ],
             ),
@@ -3159,21 +3787,53 @@ class _ClimateDashboardScreenState extends State<ClimateDashboardScreen>
 
           // Force reload all data with fresh query
           if (mounted) {
-            print('Reloading dashboard data...');
+            print('🔄 Reloading dashboard data...');
             await _loadDashboardData();
 
             print('=== Dashboard Refresh Complete ===');
-            print('Final data count: ${_historicalData.length} records');
+            print('📊 Final data count: ${_historicalData.length} records');
+            print('📈 Weather patterns: ${_weatherPatterns.length}');
+            print('💡 Recommendations: ${_recommendations.length}');
+            print('📉 Statistics keys: ${_climateStatistics.keys.length}');
 
-            // Show confirmation
+            // Show detailed confirmation
             if (_historicalData.isNotEmpty) {
+              final avgTemp =
+                  _historicalData
+                      .map((w) => w.temperature)
+                      .reduce((a, b) => a + b) /
+                  _historicalData.length;
+
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text(
-                    '✅ Dashboard updated with ${_historicalData.length} records!',
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        '✅ Dashboard Updated!',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      Text('${_historicalData.length} records loaded'),
+                      Text('Avg temp: ${avgTemp.toStringAsFixed(1)}°C'),
+                      Text(
+                        '${_recommendations.length} recommendations generated',
+                      ),
+                    ],
                   ),
                   backgroundColor: Colors.blue,
-                  duration: const Duration(seconds: 2),
+                  duration: const Duration(seconds: 4),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text(
+                    '⚠️ No data loaded. Check date range settings.',
+                  ),
+                  backgroundColor: Colors.orange,
+                  duration: Duration(seconds: 3),
                 ),
               );
             }
