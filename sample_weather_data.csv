@@ -1,0 +1,29 @@
+date_time,temperature,humidity,wind_speed,condition,description,icon,pressure,precipitation
+2025-10-01T08:00:00,27.5,62.0,10.5,Sunny,Clear sky,01d,1013.5,0.0
+2025-10-02T08:00:00,28.2,65.0,12.3,Sunny,Clear sky,01d,1013.2,0.0
+2025-10-03T08:00:00,29.1,68.0,11.8,Partly Cloudy,Few clouds,02d,1012.8,0.0
+2025-10-04T08:00:00,28.5,70.0,13.5,Partly Cloudy,Scattered clouds,03d,1012.3,1.2
+2025-10-05T08:00:00,27.3,75.0,15.2,Cloudy,Broken clouds,04d,1011.5,3.5
+2025-10-06T08:00:00,26.8,78.0,16.8,Rainy,Light rain,10d,1010.8,8.7
+2025-10-07T08:00:00,25.5,82.0,18.5,Rainy,Moderate rain,10d,1009.2,15.3
+2025-10-08T08:00:00,26.2,80.0,17.2,Rainy,Light rain,10d,1009.8,6.8
+2025-10-09T08:00:00,27.5,76.0,14.8,Cloudy,Overcast clouds,04d,1011.0,2.5
+2025-10-10T08:00:00,28.8,72.0,12.5,Partly Cloudy,Few clouds,02d,1012.2,0.5
+2025-10-11T08:00:00,29.5,68.0,11.2,Partly Cloudy,Scattered clouds,03d,1012.8,0.0
+2025-10-12T08:00:00,30.2,65.0,10.5,Sunny,Clear sky,01d,1013.5,0.0
+2025-10-13T08:00:00,31.0,62.0,9.8,Sunny,Clear sky,01d,1014.0,0.0
+2025-10-14T08:00:00,30.5,64.0,10.2,Sunny,Clear sky,01d,1013.8,0.0
+2025-10-15T08:00:00,29.8,66.0,11.5,Partly Cloudy,Few clouds,02d,1013.2,0.0
+2025-10-16T08:00:00,28.5,69.0,12.8,Cloudy,Scattered clouds,03d,1012.5,1.8
+2025-10-17T08:00:00,27.8,73.0,14.5,Cloudy,Broken clouds,04d,1011.8,4.2
+2025-10-18T08:00:00,27.2,76.0,15.8,Rainy,Light rain,10d,1010.5,9.5
+2025-10-19T08:00:00,26.5,79.0,17.2,Rainy,Moderate rain,10d,1009.8,12.8
+2025-10-20T08:00:00,27.0,77.0,16.0,Cloudy,Overcast clouds,04d,1010.5,3.8
+2025-10-21T08:00:00,28.2,73.0,13.5,Partly Cloudy,Few clouds,02d,1011.8,0.8
+2025-10-22T08:00:00,29.5,69.0,11.8,Sunny,Clear sky,01d,1012.8,0.0
+2025-10-23T08:00:00,30.8,65.0,10.2,Sunny,Clear sky,01d,1013.5,0.0
+2025-10-24T08:00:00,31.5,62.0,9.5,Sunny,Clear sky,01d,1014.2,0.0
+2025-10-25T08:00:00,30.2,64.0,10.8,Sunny,Clear sky,01d,1013.8,0.0
+2025-10-26T08:00:00,29.0,67.0,12.5,Partly Cloudy,Few clouds,02d,1013.0,0.0
+2025-10-27T08:00:00,28.5,70.0,13.8,Partly Cloudy,Scattered clouds,03d,1012.3,1.5
+2025-10-28T08:00:00,28.0,72.0,14.5,Cloudy,Broken clouds,04d,1011.8,2.8

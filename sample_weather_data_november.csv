@@ -1,0 +1,32 @@
+date_time,temperature,humidity,wind_speed,condition,description,icon,pressure,precipitation
+2025-11-01T08:00:00,26.8,70.0,14.2,Cloudy,Broken clouds,04d,1011.2,5.2
+2025-11-02T08:00:00,27.5,73.0,15.8,Rainy,Light rain,10d,1010.5,12.5
+2025-11-03T08:00:00,26.2,78.0,17.5,Rainy,Moderate rain,10d,1009.8,18.7
+2025-11-04T08:00:00,25.5,82.0,19.2,Rainy,Heavy rain,10d,1008.5,28.3
+2025-11-05T08:00:00,26.0,80.0,18.0,Rainy,Light rain,10d,1009.2,15.8
+2025-11-06T08:00:00,27.2,76.0,16.5,Cloudy,Overcast clouds,04d,1010.0,8.5
+2025-11-07T08:00:00,28.5,72.0,14.8,Partly Cloudy,Scattered clouds,03d,1011.5,3.2
+2025-11-08T08:00:00,29.8,68.0,12.5,Partly Cloudy,Few clouds,02d,1012.2,0.5
+2025-11-09T08:00:00,30.5,65.0,11.2,Sunny,Clear sky,01d,1013.0,0.0
+2025-11-10T08:00:00,31.2,62.0,10.5,Sunny,Clear sky,01d,1013.8,0.0
+2025-11-11T08:00:00,30.8,64.0,11.8,Sunny,Clear sky,01d,1013.5,0.0
+2025-11-12T08:00:00,29.5,67.0,13.2,Partly Cloudy,Few clouds,02d,1012.8,1.2
+2025-11-13T08:00:00,28.8,71.0,14.8,Cloudy,Scattered clouds,03d,1011.8,4.5
+2025-11-14T08:00:00,27.5,75.0,16.5,Rainy,Light rain,10d,1010.5,10.8
+2025-11-15T08:00:00,26.8,79.0,18.2,Rainy,Moderate rain,10d,1009.5,16.5
+2025-11-16T08:00:00,27.0,77.0,17.0,Cloudy,Overcast clouds,04d,1010.2,6.8
+2025-11-17T08:00:00,28.2,73.0,15.5,Partly Cloudy,Scattered clouds,03d,1011.0,2.5
+2025-11-18T08:00:00,29.5,69.0,13.8,Partly Cloudy,Few clouds,02d,1012.0,0.8
+2025-11-19T08:00:00,30.2,66.0,12.2,Sunny,Clear sky,01d,1012.8,0.0
+2025-11-20T08:00:00,31.0,63.0,10.8,Sunny,Clear sky,01d,1013.5,0.0
+2025-11-21T08:00:00,30.5,65.0,11.5,Sunny,Clear sky,01d,1013.2,0.0
+2025-11-22T08:00:00,29.8,68.0,12.8,Partly Cloudy,Few clouds,02d,1012.5,0.5
+2025-11-23T08:00:00,28.5,72.0,14.5,Cloudy,Scattered clouds,03d,1011.5,3.8
+2025-11-24T08:00:00,27.2,76.0,16.2,Rainy,Light rain,10d,1010.2,11.5
+2025-11-25T08:00:00,26.5,80.0,17.8,Rainy,Moderate rain,10d,1009.0,19.2
+2025-11-26T08:00:00,26.8,78.0,16.5,Rainy,Light rain,10d,1009.8,13.5
+2025-11-27T08:00:00,27.5,75.0,15.2,Cloudy,Overcast clouds,04d,1010.5,7.2
+2025-11-28T08:00:00,28.8,71.0,13.8,Partly Cloudy,Scattered clouds,03d,1011.5,2.8
+2025-11-29T08:00:00,30.0,67.0,12.5,Partly Cloudy,Few clouds,02d,1012.5,0.8
+2025-11-30T08:00:00,30.8,64.0,11.2,Sunny,Clear sky,01d,1013.2,0.0
+
