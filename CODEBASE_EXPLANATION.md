@@ -8,7 +8,7 @@
 5. [Backend Integration](#backend-integration)
 6. [Data Flow & State Management](#data-flow--state-management)
 7. [Key Integrations](#key-integrations)
-8. [How Everything Works Together](#how-everything-works-together)
+8. [How Everything Works Together](#how-everything-works-together!)
 
 ---
 
