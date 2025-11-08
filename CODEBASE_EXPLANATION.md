@@ -585,6 +585,432 @@ class VonageSMSService {
 - Agricultural recommendations
 - User phone number management
 
+### 6. Network Service Integration
+
+#### Network Service (`network_service.dart`)
+
+```dart
+class NetworkService {
+  static const Duration _timeout = Duration(seconds: 30);
+  static const int _maxRetries = 3;
+  static const Duration _retryDelay = Duration(seconds: 2);
+  
+  // Check internet connectivity
+  static Future<bool> hasInternetConnection() async {
+    final connectivityResult = await Connectivity().checkConnectivity();
+    return connectivityResult != ConnectivityResult.none;
+  }
+  
+  // Make HTTP GET request with retry logic
+  static Future<http.Response> get(String url, {
+    Map<String, String>? headers,
+    int? maxRetries,
+  }) async {
+    final retries = maxRetries ?? _maxRetries;
+    
+    for (int attempt = 0; attempt < retries; attempt++) {
+      try {
+        final response = await http.get(
+          Uri.parse(url),
+          headers: _getDefaultHeaders(headers),
+        ).timeout(_timeout);
+        
+        return response;
+      } catch (e) {
+        if (attempt < retries - 1) {
+          await Future.delayed(_retryDelay * (attempt + 1));
+        }
+      }
+    }
+    throw Exception('Request failed after $retries attempts');
+  }
+}
+```
+
+**Features:**
+- Automatic retry logic (3 attempts by default)
+- Connection timeout handling (30 seconds)
+- Connectivity checking (WiFi, Mobile, None)
+- Cached connectivity status (30 seconds cache)
+- Default headers (Content-Type, Accept, User-Agent)
+- Exponential backoff for retries
+
+**Error Handling:**
+- Network errors: Retry with exponential backoff
+- Timeout errors: Retry after delay
+- Connectivity errors: Fallback to cached data
+- API errors: Return error response
+
+### 7. Offline Storage Integration
+
+#### Offline Storage Service (`offline_storage_service.dart`)
+
+```dart
+class OfflineStorageService {
+  static const String _weatherKey = 'cached_weather_data';
+  static const String _soilKey = 'cached_soil_data';
+  static const String _predictionsKey = 'cached_predictions';
+  
+  // Save weather data offline
+  static Future<void> saveWeatherData(Weather weather) async {
+    final prefs = await SharedPreferences.getInstance();
+    final existingData = prefs.getStringList(_weatherKey) ?? [];
+    
+    // Add new weather data
+    existingData.add(jsonEncode(weather.toJson()));
+    
+    // Keep only last 100 entries
+    if (existingData.length > 100) {
+      existingData.removeRange(0, existingData.length - 100);
+    }
+    
+    await prefs.setStringList(_weatherKey, existingData);
+  }
+  
+  // Get cached weather data
+  static Future<List<Weather>> getCachedWeatherData() async {
+    final prefs = await SharedPreferences.getInstance();
+    final data = prefs.getStringList(_weatherKey) ?? [];
+    
+    return data.map((jsonString) {
+      return Weather.fromJson(jsonDecode(jsonString));
+    }).toList();
+  }
+  
+  // Check if data is fresh (less than 1 hour old)
+  static Future<bool> isDataFresh() async {
+    final prefs = await SharedPreferences.getInstance();
+    final lastUpdate = prefs.getString(_lastUpdateKey);
+    
+    if (lastUpdate == null) return false;
+    
+    final lastUpdateTime = DateTime.parse(lastUpdate);
+    final difference = DateTime.now().difference(lastUpdateTime);
+    
+    return difference.inHours < 1;
+  }
+}
+```
+
+**Features:**
+- Local caching with SharedPreferences
+- Data expiration checking (1 hour)
+- Automatic cache management (keep last 100 entries)
+- JSON serialization/deserialization
+- Cache size monitoring
+- Cache clearing functionality
+
+**Storage Strategy:**
+- Weather data: List of last 100 weather records
+- Soil data: Single latest soil record
+- Predictions: List of recent predictions
+- Last update timestamp: For freshness checking
+
+### 8. Firebase AI Integration
+
+#### Firebase AI Service (`firebase_ai_service.dart`)
+
+```dart
+class FirebaseAIService {
+  late final GenerativeModel _agriculturalModel;
+  bool _isInitialized = false;
+  
+  // Initialize Firebase AI
+  Future<void> initialize() async {
+    _agriculturalModel = FirebaseAI.googleAI().generativeModel(
+      model: 'gemini-1.5-flash',
+      generationConfig: GenerationConfig(
+        temperature: 0.7,
+        topK: 40,
+        topP: 0.95,
+        maxOutputTokens: 1024,
+      ),
+      systemInstruction: Content.text(_getSystemInstruction()),
+    );
+    
+    _isInitialized = true;
+  }
+  
+  // Generate crop recommendations
+  Future<Map<String, dynamic>> generateCropRecommendations({
+    required Weather currentWeather,
+    required SoilData soilData,
+    required String location,
+    required String season,
+  }) async {
+    final prompt = '''
+    Analyze agricultural conditions for $location, Zimbabwe:
+    - Temperature: ${currentWeather.temperature}°C
+    - Humidity: ${currentWeather.humidity}%
+    - Precipitation: ${currentWeather.precipitation}mm
+    - Soil pH: ${soilData.ph}
+    
+    Provide crop recommendations and farming advice.
+    ''';
+    
+    final response = await _agriculturalModel.generateContent([
+      Content.text(prompt),
+    ]);
+    
+    return _parseCropRecommendations(response.text ?? '');
+  }
+}
+```
+
+**Features:**
+- AI-powered crop recommendations
+- Pest and disease risk assessment
+- Irrigation advice generation
+- Farming calendar generation
+- Market insights and pricing
+- Weather pattern analysis
+- Fallback mechanisms for AI failures
+
+**AI Model Configuration:**
+- Model: Gemini 1.5 Flash
+- Temperature: 0.7 (balanced creativity)
+- Max tokens: 1024
+- System instruction: Zimbabwe agricultural expert
+- Error handling: Fallback to rule-based recommendations
+
+### 9. Backend Integration Flow
+
+#### Complete Integration Flow
+
+```
+1. Frontend Request
+   └─► Provider calls Service
+       │
+       ▼
+2. Network Check
+   └─► NetworkService.hasInternetConnection()
+       │
+       ├─► Online: Continue to API
+       └─► Offline: Load from cache
+       │
+       ▼
+3. API Call (if online)
+   └─► NetworkService.get() / post()
+       │
+       ├─► Retry logic (3 attempts)
+       ├─► Timeout handling (30s)
+       └─► Error handling
+       │
+       ▼
+4. Response Processing
+   └─► Parse JSON response
+       │
+       ├─► Create model objects
+       ├─► Validate data
+       └─► Handle errors
+       │
+       ▼
+5. Data Persistence
+   ├─► Firebase Firestore (cloud)
+   │   └─► Save for sync
+   │
+   └─► Offline Storage (local)
+       └─► Cache for offline access
+       │
+       ▼
+6. State Update
+   └─► Provider updates state
+       │
+       ├─► Update UI automatically
+       └─► Trigger notifications
+       │
+       ▼
+7. Notification (if applicable)
+   └─► NotificationService
+       │
+       ├─► Local notification
+       ├─► Firebase notification
+       └─► SMS (if critical)
+```
+
+### 10. Error Handling & Resilience
+
+#### Error Handling Strategy
+
+```dart
+// Example: Weather service with error handling
+Future<Weather> getCurrentWeather({String city = 'Harare'}) async {
+  try {
+    // Check connectivity
+    if (!await NetworkService.hasInternetConnection()) {
+      // Load from cache
+      final cachedData = await OfflineStorageService.getCachedWeatherData();
+      if (cachedData.isNotEmpty) {
+        return cachedData.last;
+      }
+      throw Exception('No internet and no cached data');
+    }
+    
+    // Try primary API
+    try {
+      return await _getWeatherFromWeatherAPI(city);
+    } catch (e) {
+      // Fallback to alternative API
+      return await ZimbabweApiService.getCurrentWeather(city);
+    }
+  } catch (e) {
+    // Final fallback: return cached data or throw
+    final cachedData = await OfflineStorageService.getCachedWeatherData();
+    if (cachedData.isNotEmpty) {
+      return cachedData.last;
+    }
+    throw Exception('Failed to get weather data: $e');
+  }
+}
+```
+
+**Error Handling Layers:**
+1. **Network Layer**: Connectivity checks, retries, timeouts
+2. **API Layer**: Primary API → Fallback API → Cached data
+3. **Data Layer**: Validation, parsing, error recovery
+4. **UI Layer**: User-friendly error messages, loading states
+
+### 11. Security & Best Practices
+
+#### Security Measures
+
+```dart
+// API Key Management
+class EnvironmentService {
+  // API keys stored in environment variables
+  static const String _weatherApiKey = '4360f911bf30467c85c12953251009';
+  static const String _vonageApiKey = '5ed1470d';
+  static const String _vonageApiSecret = 'XoqTr3O2cuL0vk0l';
+  
+  // Never expose keys in client code (use environment variables)
+  static String get weatherApiKey => _weatherApiKey;
+}
+```
+
+**Security Best Practices:**
+- API keys in environment variables (not hardcoded)
+- Firebase security rules for Firestore
+- User authentication required for sensitive operations
+- HTTPS for all API calls
+- Input validation and sanitization
+- Error messages don't expose sensitive information
+
+#### Performance Optimization
+
+```dart
+// Caching Strategy
+class WeatherService {
+  static Weather? _cachedWeather;
+  static DateTime? _cacheTimestamp;
+  static const Duration _cacheDuration = Duration(minutes: 15);
+  
+  Future<Weather> getCurrentWeather({String city = 'Harare'}) async {
+    // Check cache first
+    if (_cachedWeather != null && 
+        _cacheTimestamp != null &&
+        DateTime.now().difference(_cacheTimestamp!) < _cacheDuration) {
+      return _cachedWeather!;
+    }
+    
+    // Fetch fresh data
+    final weather = await _fetchWeather(city);
+    _cachedWeather = weather;
+    _cacheTimestamp = DateTime.now();
+    
+    return weather;
+  }
+}
+```
+
+**Performance Optimizations:**
+- Response caching (15 minutes for weather data)
+- Request batching for multiple API calls
+- Lazy loading for large datasets
+- Image caching and optimization
+- Database query optimization
+- Offline-first approach
+
+### 12. API Rate Limiting & Quotas
+
+#### Rate Limiting Strategy
+
+```dart
+class ApiRateLimiter {
+  static final Map<String, List<DateTime>> _requestHistory = {};
+  static const int _maxRequestsPerMinute = 60;
+  static const int _maxRequestsPerHour = 1000;
+  
+  static bool canMakeRequest(String apiName) {
+    final now = DateTime.now();
+    final history = _requestHistory[apiName] ?? [];
+    
+    // Remove old requests
+    final recentHistory = history.where((time) {
+      return now.difference(time).inMinutes < 1;
+    }).toList();
+    
+    // Check rate limit
+    if (recentHistory.length >= _maxRequestsPerMinute) {
+      return false;
+    }
+    
+    // Update history
+    recentHistory.add(now);
+    _requestHistory[apiName] = recentHistory;
+    
+    return true;
+  }
+}
+```
+
+**Rate Limiting:**
+- WeatherAPI.com: 1 million calls/month (free tier)
+- Open-Meteo: Unlimited (free)
+- Vonage SMS: Based on account plan
+- Firebase: Based on Firebase plan
+
+### 13. Monitoring & Logging
+
+#### Logging Strategy
+
+```dart
+class LoggingService {
+  static void info(String message, {Map<String, dynamic>? extra}) {
+    // Log to console in debug mode
+    if (kDebugMode) {
+      print('INFO: $message');
+      if (extra != null) print('Extra: $extra');
+    }
+    
+    // Send to Firebase Analytics in production
+    if (kReleaseMode) {
+      FirebaseAnalytics.instance.logEvent(
+        name: 'info',
+        parameters: {'message': message, ...?extra},
+      );
+    }
+  }
+  
+  static void error(String message, {Object? error}) {
+    // Log error
+    print('ERROR: $message');
+    if (error != null) print('Error: $error');
+    
+    // Send to Crashlytics in production
+    if (kReleaseMode) {
+      FirebaseCrashlytics.instance.recordError(error, StackTrace.current);
+    }
+  }
+}
+```
+
+**Monitoring:**
+- Request/response logging
+- Error tracking with Firebase Crashlytics
+- Performance monitoring
+- API usage tracking
+- User analytics
+
 ---
 
 ## 📊 Data Flow & State Management
