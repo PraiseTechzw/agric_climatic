@@ -25,6 +25,7 @@ import 'providers/weather_provider.dart';
 import 'providers/notification_provider.dart';
 import 'providers/auth_provider.dart';
 import 'services/firebase_ai_service.dart';
+import 'utils/toast_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -478,22 +479,57 @@ class _MainScreenState extends State<MainScreen> {
   void _showSignOutDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
         title: const Text('Sign Out'),
         content: const Text('Are you sure you want to sign out?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Cancel'),
           ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              // Sign out using AuthProvider
-              final authProvider = context.read<AuthProvider>();
-              await authProvider.signOut();
+          Consumer<AuthProvider>(
+            builder: (context, authProvider, child) {
+              return ElevatedButton(
+                onPressed: authProvider.isLoading
+                    ? null
+                    : () async {
+                        Navigator.pop(dialogContext);
+                        await authProvider.signOut();
+
+                        if (!context.mounted) return;
+
+                        if (authProvider.errorMessage != null) {
+                          ToastService.showError(
+                            context,
+                            authProvider.errorMessage!,
+                          );
+                        } else if (authProvider.successMessage != null) {
+                          ToastService.showSuccess(
+                            context,
+                            authProvider.successMessage!,
+                            icon: Icons.logout,
+                          );
+                        }
+                      },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.error,
+                  foregroundColor: Colors.white,
+                ),
+                child: authProvider.isLoading
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                    : const Text('Sign Out'),
+              );
             },
-            child: const Text('Sign Out'),
           ),
         ],
       ),

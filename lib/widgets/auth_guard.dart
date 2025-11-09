@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../services/auth_service.dart';
 import '../screens/auth_screen.dart';
+import '../utils/toast_service.dart';
 
 class AuthGuard extends StatelessWidget {
   final Widget child;
@@ -88,31 +89,55 @@ class _EmailVerificationScreen extends StatelessWidget {
                             ? null
                             : () async {
                                 await authProvider.resendEmailVerification();
+                                if (!context.mounted) return;
+
                                 if (authProvider.errorMessage != null) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(authProvider.errorMessage!),
-                                      backgroundColor: Theme.of(
-                                        context,
-                                      ).colorScheme.error,
-                                    ),
+                                  ToastService.showError(
+                                    context,
+                                    authProvider.errorMessage!,
                                   );
-                                } else {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Verification email sent!'),
-                                    ),
+                                } else if (authProvider.successMessage != null) {
+                                  ToastService.showSuccess(
+                                    context,
+                                    authProvider.successMessage!,
+                                    icon: Icons.email_outlined,
                                   );
                                 }
                               },
-                        icon: const Icon(Icons.refresh),
-                        label: const Text('Resend Verification Email'),
+                        icon: authProvider.isLoading
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.refresh),
+                        label: Text(
+                          authProvider.isLoading
+                              ? 'Sending...'
+                              : 'Resend Verification Email',
+                        ),
                       ),
                       const SizedBox(height: 16),
                       TextButton(
-                        onPressed: () async {
-                          await authProvider.signOut();
-                        },
+                        onPressed: authProvider.isLoading
+                            ? null
+                            : () async {
+                                await authProvider.signOut();
+                                if (!context.mounted) return;
+
+                                if (authProvider.errorMessage != null) {
+                                  ToastService.showError(
+                                    context,
+                                    authProvider.errorMessage!,
+                                  );
+                                } else if (authProvider.successMessage != null) {
+                                  ToastService.showSuccess(
+                                    context,
+                                    authProvider.successMessage!,
+                                    icon: Icons.logout,
+                                  );
+                                }
+                              },
                         child: const Text('Sign Out'),
                       ),
                     ],

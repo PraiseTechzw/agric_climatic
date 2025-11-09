@@ -8,10 +8,12 @@ class AuthProvider extends ChangeNotifier {
   User? _user;
   bool _isLoading = false;
   String? _errorMessage;
+  String? _successMessage;
 
   User? get user => _user;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+  String? get successMessage => _successMessage;
   bool get isAuthenticated => _user != null;
   bool get isAnonymous => _user?.isAnonymous ?? false;
 
@@ -31,6 +33,7 @@ class AuthProvider extends ChangeNotifier {
     try {
       _setLoading(true);
       _clearError();
+      _clearSuccess();
 
       if (!FirebaseConfig.isInitialized) {
         await FirebaseConfig.initializeWithFallback();
@@ -50,6 +53,7 @@ class AuthProvider extends ChangeNotifier {
       } catch (_) {}
 
       _user = credential.user;
+      _setSuccess('Signed in successfully');
       LoggingService.info('User signed in: ${_user?.uid}');
     } on FirebaseAuthException catch (e) {
       final message =
@@ -76,6 +80,7 @@ class AuthProvider extends ChangeNotifier {
     try {
       _setLoading(true);
       _clearError();
+      _clearSuccess();
 
       if (!FirebaseConfig.isInitialized) {
         await FirebaseConfig.initializeWithFallback();
@@ -91,8 +96,16 @@ class AuthProvider extends ChangeNotifier {
 
       // Send email verification
       if (_user != null && !_user!.emailVerified) {
-        await _user!.sendEmailVerification();
-        LoggingService.info('Email verification sent to: ${_user!.email}');
+        try {
+          await _user!.sendEmailVerification();
+          _setSuccess('Account created! Please check your email to verify your account.');
+          LoggingService.info('Email verification sent to: ${_user!.email}');
+        } catch (e) {
+          _setSuccess('Account created successfully!');
+          LoggingService.warning('Could not send verification email', error: e);
+        }
+      } else {
+        _setSuccess('Account created successfully!');
       }
 
       LoggingService.info('User created: ${_user?.uid}');
@@ -118,6 +131,7 @@ class AuthProvider extends ChangeNotifier {
     try {
       _setLoading(true);
       _clearError();
+      _clearSuccess();
 
       if (!FirebaseConfig.isInitialized) {
         await FirebaseConfig.initializeWithFallback();
@@ -125,7 +139,7 @@ class AuthProvider extends ChangeNotifier {
 
       final credential = await FirebaseAuth.instance.signInAnonymously();
       _user = credential.user;
-
+      _setSuccess('Signed in as guest');
       LoggingService.info('Anonymous user signed in: ${_user?.uid}');
     } catch (e) {
       _setError('Failed to sign in anonymously. Please try again.');
@@ -139,10 +153,11 @@ class AuthProvider extends ChangeNotifier {
     try {
       _setLoading(true);
       _clearError();
+      _clearSuccess();
 
       await FirebaseAuth.instance.signOut();
       _user = null;
-
+      _setSuccess('Signed out successfully');
       LoggingService.info('User signed out');
     } catch (e) {
       _setError('Failed to sign out. Please try again.');
@@ -156,9 +171,10 @@ class AuthProvider extends ChangeNotifier {
     try {
       _setLoading(true);
       _clearError();
+      _clearSuccess();
 
       await FirebaseAuth.instance.sendPasswordResetEmail(email: email.trim());
-
+      _setSuccess('Password reset email sent! Please check your inbox.');
       LoggingService.info('Password reset email sent to: $email');
     } on FirebaseAuthException catch (e) {
       _setError(_getErrorMessage(e.code));
@@ -173,13 +189,22 @@ class AuthProvider extends ChangeNotifier {
 
   Future<void> resendEmailVerification() async {
     try {
+      _setLoading(true);
+      _clearError();
+      _clearSuccess();
+
       if (_user != null && !_user!.emailVerified) {
         await _user!.sendEmailVerification();
+        _setSuccess('Verification email sent! Please check your inbox.');
         LoggingService.info('Email verification resent to: ${_user!.email}');
+      } else {
+        _setError('Email is already verified.');
       }
     } catch (e) {
       _setError('Failed to resend verification email. Please try again.');
       LoggingService.error('Resend verification failed', error: e);
+    } finally {
+      _setLoading(false);
     }
   }
 
@@ -203,11 +228,23 @@ class AuthProvider extends ChangeNotifier {
 
   void _setError(String error) {
     _errorMessage = error;
+    _successMessage = null;
+    notifyListeners();
+  }
+
+  void _setSuccess(String success) {
+    _successMessage = success;
+    _errorMessage = null;
     notifyListeners();
   }
 
   void _clearError() {
     _errorMessage = null;
+    notifyListeners();
+  }
+
+  void _clearSuccess() {
+    _successMessage = null;
     notifyListeners();
   }
 

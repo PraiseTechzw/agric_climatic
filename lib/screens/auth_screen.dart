@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
-import '../services/auth_service.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/custom_text_field.dart';
 import '../widgets/loading_button.dart';
 import 'package:intl_phone_number_input/intl_phone_number_input.dart';
 import '../services/user_profile_service.dart';
+import '../utils/toast_service.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -78,82 +78,89 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
     });
   }
 
-  void _showError(String message) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Theme.of(context).colorScheme.error,
-      ),
-    );
-  }
-
-  void _showSuccess(String message) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Theme.of(context).colorScheme.primary,
-      ),
-    );
-  }
+  // Removed _showError and _showSuccess - using ToastService instead
 
   void _showPasswordResetDialog() {
     final emailController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Reset Password'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Enter your email address and we\'ll send you a link to reset your password.',
-            ),
-            const SizedBox(height: 16),
-            CustomTextField(
-              controller: emailController,
-              labelText: 'Email',
-              prefixIcon: Icons.email_outlined,
-              keyboardType: TextInputType.emailAddress,
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please enter your email';
-                }
-                if (!RegExp(
-                  r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
-                ).hasMatch(value)) {
-                  return 'Please enter a valid email';
-                }
-                return null;
-              },
-            ),
-          ],
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Enter your email address and we\'ll send you a link to reset your password.',
+              ),
+              const SizedBox(height: 16),
+              CustomTextField(
+                controller: emailController,
+                labelText: 'Email',
+                prefixIcon: Icons.email_outlined,
+                keyboardType: TextInputType.emailAddress,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter your email';
+                  }
+                  if (!RegExp(
+                    r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                  ).hasMatch(value)) {
+                    return 'Please enter a valid email';
+                  }
+                  return null;
+                },
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
             child: const Text('Cancel'),
           ),
-          ElevatedButton(
-            onPressed: () async {
-              if (emailController.text.isNotEmpty) {
-                Navigator.of(context).pop();
-                try {
-                  await AuthService.sendPasswordResetEmail(
-                    emailController.text,
-                  );
-                  _showSuccess('Password reset email sent! Check your inbox.');
-                } catch (e) {
-                  _showError(AuthService.getErrorMessage(e.toString()));
-                }
-              }
+          Consumer<AuthProvider>(
+            builder: (context, authProvider, child) {
+              return ElevatedButton(
+                onPressed: authProvider.isLoading
+                    ? null
+                    : () async {
+                        if (formKey.currentState!.validate()) {
+                          final navContext = context;
+                          Navigator.of(navContext).pop();
+                          await authProvider.sendPasswordResetEmail(
+                            emailController.text.trim(),
+                          );
+
+                          if (!mounted) return;
+                          final toastContext = context;
+                          if (authProvider.errorMessage != null) {
+                            ToastService.showError(
+                              toastContext,
+                              authProvider.errorMessage!,
+                            );
+                          } else {
+                            ToastService.showSuccess(
+                              toastContext,
+                              'Password reset email sent! Please check your inbox.',
+                              icon: Icons.email_outlined,
+                            );
+                          }
+                        }
+                      },
+                child: authProvider.isLoading
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Send Reset Email'),
+              );
             },
-            child: const Text('Send Reset Email'),
           ),
         ],
       ),
@@ -414,7 +421,13 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                       text: _isLogin ? 'Sign In' : 'Sign Up',
                       isLoading: authProvider.isLoading,
                       onPressed: () async {
-                        if (!_formKey.currentState!.validate()) return;
+                        if (!_formKey.currentState!.validate()) {
+                          ToastService.showError(
+                            context,
+                            'Please fill in all required fields correctly.',
+                          );
+                          return;
+                        }
 
                         if (_isLogin) {
                           await authProvider.signInWithEmailAndPassword(
@@ -424,34 +437,79 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                         } else {
                           if (_passwordController.text !=
                               _confirmPasswordController.text) {
-                            _showError('Passwords do not match');
+                            ToastService.showError(
+                              context,
+                              'Passwords do not match. Please try again.',
+                            );
                             return;
                           }
                           await authProvider.createUserWithEmailAndPassword(
                             _emailController.text,
                             _passwordController.text,
                           );
+
                           // Save phone to Firestore in E.164
-                          try {
-                            final parsed = await PhoneNumber.getParsableNumber(
-                              PhoneNumber(
-                                phoneNumber: _phoneController.text,
-                                isoCode: _initialPhone.isoCode,
-                              ),
-                            );
-                            await UserProfileService.savePhoneNumber(parsed);
-                          } catch (_) {}
+                          if (_phoneController.text.isNotEmpty) {
+                            try {
+                              final parsed = await PhoneNumber.getParsableNumber(
+                                PhoneNumber(
+                                  phoneNumber: _phoneController.text,
+                                  isoCode: _initialPhone.isoCode,
+                                ),
+                              );
+                              await UserProfileService.savePhoneNumber(parsed);
+                              if (mounted) {
+                                ToastService.showInfo(
+                                  context,
+                                  'Phone number saved successfully.',
+                                );
+                              }
+                            } catch (e) {
+                              if (mounted) {
+                                ToastService.showWarning(
+                                  context,
+                                  'Could not save phone number. You can add it later in settings.',
+                                );
+                              }
+                            }
+                          }
                         }
 
                         if (!mounted) return;
+                        final toastContext = context;
+
+                        // Show appropriate toast based on result
                         if (authProvider.errorMessage != null) {
-                          _showError(authProvider.errorMessage!);
-                        } else {
-                          _showSuccess(
-                            _isLogin
-                                ? 'Signed in successfully'
-                                : 'Account created successfully',
+                          ToastService.showError(
+                            toastContext,
+                            authProvider.errorMessage!,
                           );
+                        } else if (authProvider.successMessage != null) {
+                          // Use success message from provider
+                          if (_isLogin) {
+                            ToastService.showSuccess(
+                              toastContext,
+                              authProvider.successMessage!,
+                              icon: Icons.check_circle_outline,
+                            );
+                          } else {
+                            // Check if email needs verification
+                            final user = authProvider.user;
+                            if (user != null && !user.emailVerified) {
+                              ToastService.showInfo(
+                                toastContext,
+                                authProvider.successMessage!,
+                                duration: const Duration(seconds: 5),
+                                icon: Icons.email_outlined,
+                              );
+                            } else {
+                              ToastService.showSuccess(
+                                toastContext,
+                                authProvider.successMessage!,
+                                icon: Icons.celebration_outlined,
+                              );
+                            }
+                          }
                         }
                       },
                     );
@@ -501,6 +559,47 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                   ],
                 ),
                 const SizedBox(height: 12),
+                // Anonymous Login Button
+                Consumer<AuthProvider>(
+                  builder: (context, authProvider, child) {
+                    return OutlinedButton.icon(
+                      onPressed: authProvider.isLoading
+                          ? null
+                            : () async {
+                              await authProvider.signInAnonymously();
+                              if (!mounted) return;
+                              final toastContext = context;
+
+                              if (authProvider.errorMessage != null) {
+                                ToastService.showError(
+                                  toastContext,
+                                  authProvider.errorMessage!,
+                                );
+                              } else if (authProvider.successMessage != null) {
+                                ToastService.showSuccess(
+                                  toastContext,
+                                  authProvider.successMessage!,
+                                  icon: Icons.person_outline,
+                                );
+                              }
+                            },
+                      icon: authProvider.isLoading
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.person_outline),
+                      label: const Text('Continue as Guest'),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    );
+                  },
+                ),
               ],
             ),
           ),
